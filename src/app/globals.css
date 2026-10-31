@@ -37,6 +37,18 @@
   --color-medium: #ffd66b;
   --color-low: #6fd6a8;
 
+  /* Marketing palette since the 2026-10-31 evening redesign (docs/DESIGN.md):
+     two dominant tones, deep petrol and verdigris (the patina of copper),
+     and one vivid one, molten. Contrast on petrol, computed: bone 14.8:1,
+     verdigris 7.9:1, molten 6.2:1, petrol text on molten 6.2:1. */
+  --color-petrol: #041b1f;
+  --color-verdigris: #4fbfae;
+  --color-verdigris-soft: #8fdccf;
+  --color-bone: #f1ebdf;
+  --color-ink-on-bone: #10282c;
+  /* Molten darkened for text on bone (5.2:1). */
+  --color-molten-deep: #a8380a;
+
   /* Fonts (wired by next/font in layout.tsx) */
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
@@ -282,12 +294,86 @@
     }
   }
 
-  /* ── Marketing surface since the 2026-10-31 redesign (docs/DESIGN.md) ──
-     Thin lines instead of glass: every .lg inside the marketing layout
-     becomes a flat plate with a 1px rule. The app keeps its glass. */
+  /* ── Marketing surface (docs/DESIGN.md, 2026-10-31 evening) ──────────
+     The marketing layout redefines the colour tokens: every utility under
+     .forge-ui resolves to petrol, verdigris, bone and molten, while the app
+     keeps its own. Two dominant tones and one vivid one; no black. */
+  .forge-ui {
+    --color-bg: #041b1f;
+    --color-bg-soft: #06242a;
+    --color-surface: #072a30;
+    --color-elevated: #0b343a;
+    --color-border: #174b51;
+    --color-border-soft: #0f3c42;
+    --color-code: #031417;
+    --color-fg: #f1ebdf;
+    --color-fg-muted: #b2c4bf;
+    --color-fg-subtle: #86a19c;
+    --color-ink: #041b1f;
+    --color-molten: #ff6a2b;
+    --color-molten-bright: #ff8a55;
+    --color-signal: #8fdccf;
+    --color-cyan: #4fbfae;
+    --color-danger: #ff6a2b;
+    --color-amber: #f3c98b;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+  /* A fine grain over the whole surface, above the particles and under the
+     text: the petrol reads as a material, not a flat screen colour. */
+  .forge-ui::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* The hero: deep petrol at the top, a verdigris haze where the site tree
+     grows, and an ember at its root, the forge under the horizon. */
+  .hero-field {
+    background:
+      linear-gradient(180deg, transparent 82%, #041b1f 100%),
+      radial-gradient(34% 20% at 50% 90%, rgb(255 106 43 / 0.34), transparent 75%),
+      radial-gradient(70% 46% at 50% 88%, rgb(79 191 174 / 0.26), transparent 75%),
+      radial-gradient(120% 70% at 50% 112%, rgb(17 74 80 / 0.9), transparent 70%),
+      linear-gradient(180deg, #021316 0%, #041b1f 46%, #06272c 88%, #041b1f 100%);
+  }
+  .footer-ember {
+    background: radial-gradient(40% 70% at 50% 100%, rgb(255 106 43 / 0.22), transparent 75%);
+  }
+  .hero-clearing {
+    background: radial-gradient(44% 46% at 50% 48%, rgb(4 27 31 / 0.82), rgb(4 27 31 / 0.45) 58%, transparent 80%);
+  }
+  /* Chapter grounds: a soft glow where the chapter's picture sits. */
+  .field-right {
+    background: radial-gradient(48% 60% at 74% 50%, rgb(79 191 174 / 0.12), transparent 72%);
+  }
+  .field-band {
+    background:
+      radial-gradient(70% 22% at 50% 52%, rgb(79 191 174 / 0.13), transparent 75%),
+      radial-gradient(14% 12% at 50% 52%, rgb(255 106 43 / 0.12), transparent 80%);
+  }
+  .field-ember {
+    background:
+      radial-gradient(44% 50% at 74% 52%, rgb(255 106 43 / 0.09), transparent 72%),
+      radial-gradient(52% 64% at 74% 50%, rgb(79 191 174 / 0.1), transparent 75%);
+  }
+
+  /* Bone panels: the product's own output (a check, a diff, a plan), set
+     like paper on the petrol. */
+  .panel-bone {
+    background: var(--color-bone);
+    color: var(--color-ink-on-bone);
+    border-radius: 6px;
+    box-shadow: 0 24px 48px -28px rgb(0 0 0 / 0.7);
+  }
+
   .forge-ui .lg,
   .forge-ui .lg-thin {
-    background: rgb(15 13 12 / 0.86);
+    background: rgb(6 36 42 / 0.86);
     backdrop-filter: none;
     box-shadow: inset 0 0 0 1px var(--color-border);
   }
@@ -383,4 +469,16 @@
   font-weight: 500;
   font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
   letter-spacing: -0.01em;
+}
+/* The second voice of a title: Fraunces italic, soft and a little wonky, in verdigris. */
+.marketing h1 em,
+.marketing h2 em {
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: "opsz" 144, "SOFT" 60, "WONK" 1;
+  color: var(--color-verdigris-soft);
+}
+/* The marketing surface paints the page itself; keep overscroll the same petrol. */
+body:has(.forge-ui) {
+  background-color: #041b1f;
 }

@@ -1,29 +1,25 @@
 /**
- * The homepage chapters and how far each one is built. One sculpture per
- * chapter: it builds while the chapter scrolls in, then stays built for the
- * rest of the visit. Scrolling back up never replays anything (Hugo,
- * 2026-10-31: replaying animations on the way up is friction).
+ * The homepage chapters and where they are on screen. The WebGL loop reads
+ * this every frame to place and shape the picture; the chapters use it for
+ * one event, the moment their text is read in. That happens once: scrolling
+ * back up never replays it (Hugo, 2026-10-31: replaying is friction).
  *
- * Plain module state instead of React state: the WebGL loop reads it every
- * frame and the chapters only need one event, the moment they are built.
+ * Plain module state instead of React state, so a frame never waits on a render.
  */
 
 export type ChapterEntry = {
   el: HTMLElement;
-  /** Sculpture id, see shapeSDF in shaders.ts. */
-  shape: number;
-  /** 0 when the chapter's top enters the build zone, 1 when the sculpture is complete. */
-  progress: number;
+  /** The box in the chapter where the picture sits ([data-stage]). */
+  stage: HTMLElement | null;
   top: number;
   bottom: number;
-  built: boolean;
-  onBuilt?: () => void;
+  stageRect: { cx: number; cy: number; w: number; h: number };
+  revealed: boolean;
+  onReveal?: () => void;
 };
 
-// The sculpture builds while the chapter's top travels from 85 % to 15 % of
-// the viewport height, then the text appears.
-export const BUILD_START = 0.85;
-export const BUILD_END = 0.15;
+/** A chapter's text is read in when its top reaches this fraction of the viewport. */
+export const REVEAL_AT = 0.6;
 
 const entries: ChapterEntry[] = [];
 let viewport = 1;
@@ -37,10 +33,11 @@ function measure() {
     const r = e.el.getBoundingClientRect();
     e.top = r.top;
     e.bottom = r.bottom;
-    e.progress = Math.min(1, Math.max(0, (viewport * BUILD_START - r.top) / (viewport * (BUILD_START - BUILD_END))));
-    if (!e.built && e.progress >= 1) {
-      e.built = true;
-      e.onBuilt?.();
+    const s = (e.stage ?? e.el).getBoundingClientRect();
+    e.stageRect = { cx: s.left + s.width / 2, cy: s.top + s.height / 2, w: s.width, h: s.height };
+    if (!e.revealed && r.top <= viewport * REVEAL_AT) {
+      e.revealed = true;
+      e.onReveal?.();
     }
   }
 }
@@ -49,16 +46,17 @@ function schedule() {
   if (!frame) frame = requestAnimationFrame(measure);
 }
 
-/**
- * Registers a chapter. `builtNow` marks it built from the start (the hero,
- * or a chapter already above the build line when the page loads).
- */
-export function registerChapter(
-  el: HTMLElement,
-  shape: number,
-  opts: { builtNow?: boolean; onBuilt?: () => void } = {},
-): () => void {
-  const entry: ChapterEntry = { el, shape, progress: 0, top: 0, bottom: 0, built: !!opts.builtNow, onBuilt: opts.onBuilt };
+/** Registers a chapter. `revealedNow` skips the reveal (the hero, or a chapter already passed on load). */
+export function registerChapter(el: HTMLElement, opts: { revealedNow?: boolean; onReveal?: () => void } = {}): () => void {
+  const entry: ChapterEntry = {
+    el,
+    stage: el.querySelector<HTMLElement>("[data-stage]"),
+    top: 0,
+    bottom: 0,
+    stageRect: { cx: 0, cy: 0, w: 1, h: 1 },
+    revealed: !!opts.revealedNow,
+    onReveal: opts.onReveal,
+  };
   entries.push(entry);
   // Keep document order whatever the mount order.
   entries.sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
@@ -81,16 +79,16 @@ export function registerChapter(
   };
 }
 
-/** True when the chapter starts below the build line and should wait to be built. */
+/** True when the chapter starts below the reveal line and its text should wait. */
 export function startsBelow(el: HTMLElement): boolean {
-  return el.getBoundingClientRect().top > window.innerHeight * BUILD_END;
+  return el.getBoundingClientRect().top > window.innerHeight * REVEAL_AT;
 }
 
 export function chapters(): { entries: readonly ChapterEntry[]; viewport: number } {
   return { entries, viewport };
 }
 
-/** The WebGL loop calls this every frame so the state is never a frame late. */
+/** The WebGL loop calls this every frame so the picture is never a frame behind the page. */
 export function measureChapters() {
   measure();
 }

@@ -1,42 +1,66 @@
 # Septune, direction artistique
 
-## Refonte du 2026-10-31 : la forge en particules (en vigueur sur le site marketing)
+## Refonte du 2026-11-01 : pétrole, vert-de-gris et fusion (en vigueur sur le site marketing)
 
-Décision complète et mesures : [ADR 0003](adr/0003-accueil-en-chapitres-sculptes.md). Ce bloc
-remplace, **pour le site marketing**, le verre liquide et la scène de fond décrits plus bas. Ces
-sections restent à jour pour l'application, qui garde son verre.
+Décisions et mesures : [ADR 0004](adr/0004-images-qui-racontent-et-palette.md), qui révise
+l'[ADR 0003](adr/0003-accueil-en-chapitres-sculptes.md). Ce bloc remplace, **pour le site marketing**,
+le verre liquide et la scène de fond décrits plus bas ; l'application garde son verre et ses couleurs.
 
-**Mot de ton : l'établi.** Un outil posé sur une table propre : une sculpture qui se forme, une
-ligne de texte en mono, rien qui encombre.
+Retour d'Hugo sur la première version : « le reste de la page est noir et sans vie », le logo en
+particules « ne sert à rien », l'animation doit « bouger elle-même, bouger dans la page, se
+déformer avec le scroll et représenter ce que dit le texte », et le hero doit être **majestueux**.
+Couleurs : deux majoritaires qui vont bien ensemble, plus une vive qui donne de la personnalité.
 
-- **Le matériau, c'est le nuage de points.** Les particules sont les pages d'un site : en
-  désordre, elles se rangent en une sculpture ; la souris les dérange (un petit fluide), elles
-  se remettent en place. Il y a une sculpture par chapitre de l'accueil :
-  - le logo (deux chevrons autour d'un point, dans son carré) ;
-  - une pull request ;
-  - l'arbre d'un site ;
-  - une coche dans un anneau ;
-  - le logo encore.
+**Mot de ton : la forge.** Du métal en fusion et sa patine.
 
-  Points gris chaud, quelques points en fusion qui scintillent, lumière compressée en douceur
-  pour que les nœuds denses ne saturent pas.
-- **La construction suit le scroll, une seule fois.**
-  - **La construction :** la sculpture d'un chapitre se forme pendant qu'il entre à l'écran,
-    dans la partie déjà visible de ce chapitre. Elle ne passe jamais derrière le texte du dessus.
-  - **La révélation :** une fois construite, la sculpture glisse à droite (en haut, atténuée,
-    sur mobile) et le texte se lit d'un balayage de gauche à droite.
-  - **La remontée :** rien ne se rejoue. Seule la sculpture reprend la forme du chapitre, en
-    moins d'une seconde.
-- **Surfaces : des filets, pas du verre.** Plaques plates à filet de 1 px (`.forge-ui .lg`),
-  étiquettes sur fond `elevated`, blocs de code sur `code`. Pas d'ombre, pas de flou.
-- **Interface en mono minuscule** (JetBrains Mono 13 px) : navigation, étiquettes entre
-  crochets (`[where it's caught]`, en `molten-bright`), liens soulignés d'un filet qui passe à
-  l'orange au survol. Fraunces reste pour les titres, Schibsted Grotesk pour le texte courant.
-  Pas de capitales : les labels en capitales sont un tic de page générée.
-- **Navigation :** une ligne, sans barre. Le logo, `audit`, `docs`, `pricing`, `sign in`, et une
-  pastille ronde avec le nombre de contrôles. Un fondu vers le fond la garde lisible.
+- **Couleurs.**
+  - **Deux tons dominants :** le pétrole profond (`#041b1f`, le fond, jamais de noir) et le
+    vert-de-gris (`#4fbfae`, `#8fdccf` en clair), la patine du cuivre.
+  - **Une couleur vive :** l'orange en fusion (`#ff6a2b`), sur de petites surfaces
+    seulement (l'action principale, les éclats du robot, ce qui casse).
+  - **Les neutres :** le texte est os (`#f1ebdf`) ; les panneaux os portent l'encre
+    pétrole (`#10282c`) et l'orange assombri (`#a8380a`, 5,2:1).
+
+  Les jetons sont redéfinis sous `.forge-ui` (globals.css), et les contrastes sont calculés
+  en commentaire.
+- **Des images qui disent le texte, faites de particules qui ne s'arrêtent jamais** (`structures.ts`) :
+  - **hero :** un site en arborescence, une page d'accueil à la racine d'où s'ouvrent les
+    sections et les pages, en éventail ; des éclats en fusion (le robot) courent dans les
+    branches ;
+  - **ce qu'il lit :** le même arbre, de trois quarts ; un front en fusion le parcourt de la
+    racine aux feuilles à mesure qu'on lit, et les pages lues passent au vert ;
+  - **où c'est attrapé :** un flux de déploiements traverse trois portes alignées sur les trois
+    colonnes ; les pages fautives, en fusion, s'entassent à la porte de la pull request, qui
+    chauffe ;
+  - **comment c'est corrigé :** un fichier vu comme ses lignes, en jetons de deux tons ; la
+    ligne noindex s'arrache, le fichier se referme et verdit ;
+  - **pour commencer :** 25 petits sites ; 1, puis 5, puis 25 s'allument au fil des offres.
+- **Mouvement.**
+  - **L'image suit sa page.** Elle est posée dans la zone `[data-stage]` de son chapitre et
+    défile avec elle.
+  - **D'un chapitre à l'autre,** elle se transforme et voyage d'une zone à l'autre, au rythme
+    du scroll, dans les deux sens.
+  - **Elle vit seule :** flux, respiration, balancement, et la souris la dérange.
+  - **Le texte se lit une seule fois** (balayage de gauche à droite) ; rien ne se rejoue en
+    remontant.
+- **Hero.**
+  - **Le cadre :** plein écran, champ pétrole, brume vert-de-gris là où pousse l'arbre, braise
+    orange à sa racine.
+  - **Le titre :** monumental et centré, « Ship fast. » en os et « Stay indexed. » en
+    Fraunces italique vert-de-gris.
+  - **La lisibilité :** une clairière sombre, posée au-dessus des particules, garde le texte
+    lisible.
+- **Surfaces.**
+  - **Les panneaux os** montent ce que le produit produit vraiment (le check de PR, le diff,
+    les offres) comme du papier posé sur le pétrole.
+  - **Ailleurs :** des filets de 1 px, et un grain fin sur toute la surface.
+- **Typographie.**
+  - **Fraunces** pour les titres, avec une seconde voix en italique (`<em>` dans h1/h2).
+  - **Schibsted Grotesk** pour le texte.
+  - **JetBrains Mono** en minuscules pour l'interface et les étiquettes entre crochets.
+- **Pied de page :** le nom en Fraunces italique géant, coupé par le bas de la page, sur la braise.
 - **Repli :** la scène se charge après le premier affichage. Sans WebGL2, la page se lit sans elle.
-  Avec `prefers-reduced-motion`, les sculptures sont fixes et tout le texte est visible d'emblée.
+  Avec `prefers-reduced-motion`, les images sont fixes et tout le texte est visible d'emblée.
 
 ## Refonte du 2026-10-08 (verre liquide, en vigueur dans l'application)
 

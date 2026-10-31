@@ -42,8 +42,8 @@ const COLUMNS = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-bg-soft">
-      <div className="container-rf py-14">
+    <footer className="relative z-10 overflow-hidden border-t border-border bg-bg-soft">
+      <div className="container-rf relative py-14">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Logo />
@@ -99,6 +99,12 @@ export function SiteFooter() {
           </nav>
           <p>No ranking promises. Just better technical SEO, shipped as code.</p>
         </div>
+      </div>
+      {/* The name as material: set huge, cut by the bottom of the page, over the ember the hero rose from. */}
+      <div aria-hidden className="footer-ember pointer-events-none relative h-[clamp(5rem,15vw,15rem)] select-none">
+        <p className="absolute inset-x-0 top-0 text-center font-display text-[clamp(7rem,26vw,26rem)] leading-[0.8] italic text-verdigris/15 [font-variation-settings:'opsz'_144,'SOFT'_60,'WONK'_1]">
+          Septune
+        </p>
       </div>
     </footer>
   );

@@ -9,25 +9,27 @@ import {
   POINTS_FRAG,
   POINTS_VERT,
   PRESSURE_FRAG,
-  PROJECT_FRAG,
   SCALE_FRAG,
   SIM_FRAG,
   SPLAT_FRAG,
   TONE_FRAG,
   VORTICITY_FRAG,
 } from "./shaders";
+import { buildStructures } from "./structures";
+
+/** One of the two structures on screen, with its chapter's own progress. */
+export type ForgeSlot = { sid: number; state: [number, number, number, number] };
 
 /** What the page asks the field to show on this frame. */
 export type ForgeFrame = {
-  /** Particles move from sculpture A to B as mix goes 0 -> 1 (-1 = loose cloud). */
-  shapeA: number;
-  shapeB: number;
+  from: ForgeSlot;
+  to: ForgeSlot;
+  /** Particles move from `from` to `to` as mix goes 0 -> 1. */
   mix: number;
-  /** Sculpture centre, as a fraction of the viewport from its centre (x right, y up). */
-  x: number;
-  y: number;
-  /** Sculpture height as a fraction of the viewport height. */
-  size: number;
+  /** Where the picture sits, in CSS pixels of the viewport: it is fitted into this box. */
+  box: { cx: number; cy: number; w: number; h: number };
+  rotY: number;
+  rotX: number;
   opacity: number;
 };
 
@@ -35,14 +37,12 @@ export type ForgeOptions = {
   /** Particles per side of the simulation texture: side² particles. */
   side: number;
   dpr: number;
-  /** false when the visitor asked for reduced motion: no drift, no fluid, no travel. */
+  /** false when the visitor asked for reduced motion: no flow, no fluid, no sway. */
   motion: boolean;
 };
 
 export type Forge = { dispose(): void };
 
-const BG = 0x0a0908; // --color-bg
-const SHAPE_SPAN = 1.7; // sculptures are about 1.7 units tall in their own space
 const CAMERA_Z = 6;
 const HALF_FOV = THREE.MathUtils.degToRad(15);
 
@@ -67,8 +67,7 @@ export function createForge(
     throw new Error("forge: float render targets unsupported");
   }
   renderer.setPixelRatio(opts.dpr);
-  // Every pass overwrites its whole target; the points are summed on black
-  // and the tone pass paints the page background itself.
+  // Light on black: the canvas is screen-blended onto the page, black adds nothing.
   renderer.setClearColor(0x000000, 1);
 
   const N = opts.side;
@@ -97,8 +96,8 @@ export function createForge(
   };
   const tex = (t: THREE.Texture | null = null): THREE.IUniform<THREE.Texture | null> => ({ value: t });
   const targets: THREE.WebGLRenderTarget[] = [];
-  const target = (size: number, type: THREE.TextureDataType, filter: THREE.MagnificationTextureFilter) => {
-    const t = new THREE.WebGLRenderTarget(size, size, {
+  const target = (w: number, h: number, type: THREE.TextureDataType, filter: THREE.MagnificationTextureFilter) => {
+    const t = new THREE.WebGLRenderTarget(w, h, {
       type,
       format: THREE.RGBAFormat,
       minFilter: filter,
@@ -117,54 +116,54 @@ export function createForge(
     renderer.render(passScene, passCam);
   };
 
-  // ---- particles: start as a loose cloud, each with its own random vector
+  // ---- particle data: one random vector each, and their places in every structure
   const count = N * N;
-  const origin = new Float32Array(count * 4);
   const random = new Float32Array(count * 4);
   const ref = new Float32Array(count * 2);
   for (let i = 0; i < count; i++) {
-    origin[i * 4] = (Math.random() * 2 - 1) * 1.6;
-    origin[i * 4 + 1] = (Math.random() * 2 - 1) * 1.1;
-    origin[i * 4 + 2] = (Math.random() * 2 - 1) * 1.1;
-    origin[i * 4 + 3] = 1;
     for (let k = 0; k < 4; k++) random[i * 4 + k] = Math.random();
     ref[i * 2] = ((i % N) + 0.5) / N;
     ref[i * 2 + 1] = (Math.floor(i / N) + 0.5) / N;
   }
+  const textures: THREE.DataTexture[] = [];
   const dataTexture = (data: Float32Array) => {
     const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat, THREE.FloatType);
     t.needsUpdate = true;
+    textures.push(t);
     return t;
   };
-  const originTex = dataTexture(origin);
   const randomTex = dataTexture(random);
+  const structures = buildStructures(count).map((s) => ({
+    a: dataTexture(s.a),
+    b: dataTexture(s.b),
+    c: dataTexture(s.c),
+    width: s.width,
+    height: s.height,
+  }));
 
-  let pos = target(N, THREE.FloatType, THREE.NearestFilter);
-  let posNext = target(N, THREE.FloatType, THREE.NearestFilter);
-  const copy = material(COPY_FRAG, { uSource: tex(originTex) });
+  // Particles start as a wide loose cloud; the first picture forms out of it.
+  const cloud = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) {
+    cloud[i * 4] = (Math.random() * 2 - 1) * 4;
+    cloud[i * 4 + 1] = (Math.random() * 2 - 1) * 2.4;
+    cloud[i * 4 + 2] = (Math.random() * 2 - 1) * 2;
+    cloud[i * 4 + 3] = 1;
+  }
+  let pos = target(N, N, THREE.FloatType, THREE.NearestFilter);
+  let posNext = target(N, N, THREE.FloatType, THREE.NearestFilter);
+  const copy = material(COPY_FRAG, { uSource: tex(dataTexture(cloud)) });
   pass(copy, pos);
-
-  // Each particle's own place on each sculpture, computed once.
-  const SHAPES = 4;
-  const project = material(PROJECT_FRAG, { uOrigin: tex(originTex), uRandom: tex(randomTex), uShape: { value: 0 } });
-  const homes = Array.from({ length: SHAPES }, (_, shape) => {
-    const home = target(N, THREE.FloatType, THREE.NearestFilter);
-    project.u.uShape.value = shape;
-    pass(project, home);
-    return home;
-  });
-  const homeOf = (shape: number) => homes[Math.round(shape)] ?? null;
 
   // ---- fluid
   const half = THREE.HalfFloatType;
-  let vel = target(SIM, half, THREE.LinearFilter);
-  let velNext = target(SIM, half, THREE.LinearFilter);
-  let dye = target(DYE, half, THREE.LinearFilter);
-  let dyeNext = target(DYE, half, THREE.LinearFilter);
-  let pressure = target(SIM, half, THREE.NearestFilter);
-  let pressureNext = target(SIM, half, THREE.NearestFilter);
-  const divergence = target(SIM, half, THREE.NearestFilter);
-  const curl = target(SIM, half, THREE.NearestFilter);
+  let vel = target(SIM, SIM, half, THREE.LinearFilter);
+  let velNext = target(SIM, SIM, half, THREE.LinearFilter);
+  let dye = target(DYE, DYE, half, THREE.LinearFilter);
+  let dyeNext = target(DYE, DYE, half, THREE.LinearFilter);
+  let pressure = target(SIM, SIM, half, THREE.NearestFilter);
+  let pressureNext = target(SIM, SIM, half, THREE.NearestFilter);
+  const divergence = target(SIM, SIM, half, THREE.NearestFilter);
+  const curl = target(SIM, SIM, half, THREE.NearestFilter);
   const texel = new THREE.Vector2(1 / SIM, 1 / SIM);
 
   const splat = material(SPLAT_FRAG, {
@@ -185,11 +184,7 @@ export function createForge(
   });
   const divergenceM = material(DIVERGENCE_FRAG, { uVelocity: tex(), uTexel: { value: texel } });
   const scale = material(SCALE_FRAG, { uSource: tex(), uValue: { value: 0.95 } });
-  const pressureM = material(PRESSURE_FRAG, {
-    uPressure: tex(),
-    uDivergence: tex(divergence.texture),
-    uTexel: { value: texel },
-  });
+  const pressureM = material(PRESSURE_FRAG, { uPressure: tex(), uDivergence: tex(divergence.texture), uTexel: { value: texel } });
   const gradient = material(GRADIENT_FRAG, { uPressure: tex(), uVelocity: tex(), uTexel: { value: texel } });
   const advect = material(ADVECT_FRAG, {
     uVelocity: tex(),
@@ -199,22 +194,31 @@ export function createForge(
     uDissipation: { value: 0.98 },
   });
 
-  // ---- simulation
+  // Uniforms shared by the simulation and the points: the two structures on screen.
+  const slots = {
+    uA0: tex(),
+    uB0: tex(),
+    uC0: tex(),
+    uA1: tex(),
+    uB1: tex(),
+    uC1: tex(),
+    uSid0: { value: 0 },
+    uSid1: { value: 0 },
+    uSt0: { value: new THREE.Vector4(-1, 0, 0, 0) },
+    uSt1: { value: new THREE.Vector4(-1, 0, 0, 0) },
+    uMix: { value: 0 },
+    uTime: { value: 0 },
+  };
+
   const sim = material(SIM_FRAG, {
+    ...slots,
     uPos: tex(),
-    uOrigin: tex(originTex),
     uRandom: tex(randomTex),
     uVel: tex(),
     uDye: tex(),
-    uTime: { value: 0 },
     uHZ: { value: 1 },
-    uHomeA: tex(),
-    uHomeB: tex(),
-    uHasA: { value: 0 },
-    uHasB: { value: 0 },
-    uMix: { value: 0 },
     uMotion: { value: opts.motion ? 1 : 0 },
-    uStrength: { value: 0.55 },
+    uStrength: { value: 0.5 },
     uProj: { value: new THREE.Matrix4() },
     uModel: { value: new THREE.Matrix4() },
     uInvModel: { value: new THREE.Matrix3() },
@@ -226,13 +230,13 @@ export function createForge(
   geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(count * 3), 3));
   geometry.setAttribute("ref", new THREE.BufferAttribute(ref, 2));
   geometry.setAttribute("rnd", new THREE.BufferAttribute(random, 4));
+  // The same uniform objects as the simulation: one update serves both.
   const pointsU = {
-      uPos: tex(pos.texture),
-      uSize: { value: mobile ? 3.4 : 2.3 },
-      uDPR: { value: opts.dpr },
-      uTime: { value: 0 },
-      uOpacity: { value: 1 },
-      uAccent: { value: new THREE.Vector3(1, 0.48, 0.18) }, // molten
+    ...slots,
+    uPos: tex(pos.texture),
+    uSize: { value: mobile ? 3.2 : 2.4 },
+    uDPR: { value: opts.dpr },
+    uOpacity: { value: 1 },
   };
   const pointsMat = new THREE.ShaderMaterial({
     vertexShader: POINTS_VERT,
@@ -244,25 +248,12 @@ export function createForge(
     blending: THREE.AdditiveBlending,
   });
   materials.push(pointsMat);
-  const hdr = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.HalfFloatType,
-    format: THREE.RGBAFormat,
-    minFilter: THREE.LinearFilter,
-    magFilter: THREE.LinearFilter,
-    depthBuffer: false,
-    stencilBuffer: false,
-  });
-  targets.push(hdr);
-  // Raw sRGB components: the tone pass writes display values, so a THREE.Color
-  // (converted to linear by colour management) would come out too dark.
-  const tone = material(TONE_FRAG, {
-    uTex: tex(hdr.texture),
-    uBg: { value: new THREE.Vector3(((BG >> 16) & 255) / 255, ((BG >> 8) & 255) / 255, (BG & 255) / 255) },
-    uExposure: { value: 1.15 },
-  });
   const points = new THREE.Points(geometry, pointsMat);
   points.frustumCulled = false;
   group.add(points);
+
+  const hdr = target(1, 1, THREE.HalfFloatType, THREE.LinearFilter);
+  const tone = material(TONE_FRAG, { uTex: tex(hdr.texture), uExposure: { value: 1.1 } });
 
   // ---- pointer: the cursor stirs the fluid and turns the camera a little
   const pointer = { x: 0, y: 0, px: 0, py: 0, moved: false, seen: false, last: 0 };
@@ -292,10 +283,10 @@ export function createForge(
     W = window.innerWidth;
     H = window.innerHeight;
     renderer.setSize(W, H, false);
-    hdr.setSize(Math.max(1, Math.floor(W * opts.dpr)), Math.max(1, Math.floor(H * opts.dpr)));
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
     splat.u.uAspect.value = W / H;
+    hdr.setSize(Math.max(1, Math.floor(W * opts.dpr)), Math.max(1, Math.floor(H * opts.dpr)));
   };
   resize();
   window.addEventListener("resize", resize);
@@ -303,11 +294,10 @@ export function createForge(
   const clampMap = (v: number, a: number, b: number, c: number, d: number) =>
     c + (d - c) * Math.min(1, Math.max(0, (v - a) / (b - a)));
 
-  function splatAt(out: () => THREE.WebGLRenderTarget, into: () => THREE.WebGLRenderTarget, color: THREE.Vector3Like, swap: () => void) {
-    splat.u.uTarget.value = out().texture;
+  function splatInto(source: THREE.WebGLRenderTarget, out: THREE.WebGLRenderTarget, color: THREE.Vector3Like) {
+    splat.u.uTarget.value = source.texture;
     splat.u.uColor.value.copy(color);
-    pass(splat, into());
-    swap();
+    pass(splat, out);
   }
 
   function fluidStep() {
@@ -317,19 +307,20 @@ export function createForge(
       const len = Math.hypot(dx, dy);
       if (len > 0.01) {
         const now = performance.now();
+        // After a pause the stroke starts where the cursor is, not where it was.
         const fresh = now - pointer.last > 50;
         pointer.last = now;
-        // After a pause the stroke starts where the cursor is, not where it was.
         const ax = fresh ? pointer.x : pointer.px;
         const ay = fresh ? pointer.y : pointer.py;
         splat.u.uA.value.set(ax / W, 1 - ay / H);
         splat.u.uB.value.set(pointer.x / W, 1 - pointer.y / H);
-        splat.u.uRadius.value = (clampMap(len, 0, 5, 0.01, 0.06) * (mobile ? 0.8 : 1));
+        splat.u.uRadius.value = clampMap(len, 0, 5, 0.01, 0.06) * (mobile ? 0.8 : 1);
         const force = clampMap(len, 0, 15, 0.4, 2.2);
         // Mouse px per frame -> fluid texels per second.
-        const v = { x: (dx / W) * SIM * 60 * force, y: (-dy / H) * SIM * 60 * force, z: 0 };
-        splatAt(() => vel, () => velNext, v, () => ([vel, velNext] = [velNext, vel]));
-        splatAt(() => dye, () => dyeNext, { x: 1, y: 1, z: 1 }, () => ([dye, dyeNext] = [dyeNext, dye]));
+        splatInto(vel, velNext, { x: (dx / W) * SIM * 60 * force, y: (-dy / H) * SIM * 60 * force, z: 0 });
+        [vel, velNext] = [velNext, vel];
+        splatInto(dye, dyeNext, { x: 1, y: 1, z: 1 });
+        [dye, dyeNext] = [dyeNext, dye];
       }
       pointer.px = pointer.x;
       pointer.py = pointer.y;
@@ -367,22 +358,32 @@ export function createForge(
     [dye, dyeNext] = [dyeNext, dye];
   }
 
+  function setSlots(f: ForgeFrame, time: number) {
+    const s0 = structures[f.from.sid] ?? structures[0]!;
+    const s1 = structures[f.to.sid] ?? structures[0]!;
+    slots.uA0.value = s0.a;
+    slots.uB0.value = s0.b;
+    slots.uC0.value = s0.c;
+    slots.uA1.value = s1.a;
+    slots.uB1.value = s1.b;
+    slots.uC1.value = s1.c;
+    slots.uSid0.value = f.from.sid;
+    slots.uSid1.value = f.to.sid;
+    slots.uSt0.value.set(...f.from.state);
+    slots.uSt1.value.set(...f.to.state);
+    slots.uMix.value = f.mix;
+    slots.uTime.value = time;
+    return { s0, s1 };
+  }
+
   const inverse = new THREE.Matrix4();
-  function simStep(f: ForgeFrame, hz: number, time: number) {
+  function simStep(hz: number) {
     const u = sim.u;
     const halfH = Math.tan(HALF_FOV) * CAMERA_Z;
     u.uPos.value = pos.texture;
     u.uVel.value = vel.texture;
     u.uDye.value = dye.texture;
-    u.uTime.value = time;
     u.uHZ.value = hz;
-    const a = homeOf(f.shapeA);
-    const b = homeOf(f.shapeB);
-    u.uHomeA.value = a ? a.texture : null;
-    u.uHomeB.value = b ? b.texture : null;
-    u.uHasA.value = a ? 1 : 0;
-    u.uHasB.value = b ? 1 : 0;
-    u.uMix.value = f.mix;
     u.uProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     u.uModel.value.copy(group.matrixWorld);
     u.uInvModel.value.setFromMatrix4(inverse.copy(group.matrixWorld).invert());
@@ -391,26 +392,29 @@ export function createForge(
     [pos, posNext] = [posNext, pos];
   }
 
-  function place(f: ForgeFrame, time: number) {
+  /** Fits the blend of the two structures into the box the page gives, in viewport pixels. */
+  function place(f: ForgeFrame, s0: { width: number; height: number }, s1: { width: number; height: number }, time: number) {
     const halfH = Math.tan(HALF_FOV) * CAMERA_Z;
-    const halfW = halfH * camera.aspect;
-    group.position.set(f.x * 2 * halfW, f.y * 2 * halfH, 0);
-    group.scale.setScalar((f.size * 2 * halfH) / SHAPE_SPAN);
+    const perPx = (2 * halfH) / H;
+    const w = s0.width + (s1.width - s0.width) * f.mix;
+    const h = s0.height + (s1.height - s0.height) * f.mix;
+    const fit = Math.min((f.box.w * perPx) / w, (f.box.h * perPx) / h);
+    group.position.set((f.box.cx - W / 2) * perPx, (H / 2 - f.box.cy) * perPx, 0);
+    group.scale.setScalar(Math.max(0.01, fit));
     const sway = opts.motion ? 1 : 0;
-    group.rotation.set(-0.08 + Math.sin(time * 0.21) * 0.05 * sway, Math.sin(time * 0.27) * 0.32 * sway, 0);
+    group.rotation.set(f.rotX + Math.sin(time * 0.19) * 0.04 * sway, f.rotY + Math.sin(time * 0.23) * 0.14 * sway, 0);
     // Gaze: the camera leans a little towards the cursor.
     const gx = pointer.seen && opts.motion ? (pointer.x / W) * 2 - 1 : 0;
     const gy = pointer.seen && opts.motion ? (pointer.y / H) * 2 - 1 : 0;
-    camera.position.x += (-gx * 0.35 - camera.position.x) * 0.05;
-    camera.position.y += (gy * 0.25 - camera.position.y) * 0.05;
-    camera.lookAt(0, 0, 0);
+    camera.position.x += (-gx * 0.25 - camera.position.x) * 0.05;
+    camera.position.y += (gy * 0.18 - camera.position.y) * 0.05;
+    camera.lookAt(camera.position.x * 0.6, camera.position.y * 0.6, 0);
     group.updateMatrixWorld();
     camera.updateMatrixWorld();
   }
 
-  function draw(f: ForgeFrame, time: number) {
+  function draw(f: ForgeFrame) {
     pointsU.uPos.value = pos.texture;
-    pointsU.uTime.value = time;
     pointsU.uOpacity.value = f.opacity;
     renderer.setRenderTarget(hdr);
     renderer.render(scene, camera);
@@ -424,22 +428,23 @@ export function createForge(
     const now = performance.now();
     const dt = Math.min(0.05, (now - prev) / 1000);
     prev = now;
-    time += dt;
+    if (opts.motion) time += dt;
     const f = next(dt, time);
-    place(f, time);
+    const { s0, s1 } = setSlots(f, time);
+    place(f, s0, s1, time);
     if (opts.motion) {
       fluidStep();
-      simStep(f, dt * 60, time);
-      draw(f, time);
+      simStep(dt * 60);
+      draw(f);
       return;
     }
-    // Reduced motion: no travel to watch. When the requested state changes,
+    // Reduced motion: nothing flows. When the requested picture changes,
     // settle the particles in one go and draw a single still frame.
-    const key = `${f.shapeA}|${f.shapeB}|${f.mix.toFixed(2)}|${f.x.toFixed(3)}|${f.y.toFixed(3)}|${f.size.toFixed(3)}|${f.opacity.toFixed(2)}|${W}x${H}`;
+    const key = `${f.from.sid}|${f.to.sid}|${f.mix.toFixed(2)}|${f.from.state.join()}|${f.to.state.join()}|${Math.round(f.box.cx)}|${Math.round(f.box.cy)}|${Math.round(f.box.w)}|${f.opacity.toFixed(2)}|${W}x${H}`;
     if (key === lastKey) return;
     lastKey = key;
-    for (let i = 0; i < 160; i++) simStep(f, 2, 0);
-    draw(f, 0);
+    for (let i = 0; i < 90; i++) simStep(3);
+    draw(f);
   });
 
   return {
@@ -450,8 +455,7 @@ export function createForge(
       window.removeEventListener("resize", resize);
       targets.forEach((t) => t.dispose());
       materials.forEach((m) => m.dispose());
-      originTex.dispose();
-      randomTex.dispose();
+      textures.forEach((t) => t.dispose());
       geometry.dispose();
       quad.geometry.dispose();
       renderer.dispose();

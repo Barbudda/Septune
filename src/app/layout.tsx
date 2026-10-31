@@ -16,6 +16,8 @@ const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-fraunces",
   axes: ["opsz", "SOFT", "WONK"],
+  // Italic: the second voice of marketing titles (docs/DESIGN.md).
+  style: ["normal", "italic"],
   display: "swap",
 });
 

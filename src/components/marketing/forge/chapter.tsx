@@ -5,27 +5,24 @@ import { cn } from "@/lib/utils";
 import { registerChapter, startsBelow } from "./chapters";
 
 /**
- * A homepage chapter: one sculpture in the forge field, and the text that
- * appears once that sculpture is built. The text is in the server HTML and
- * visible without JavaScript; it only waits for its sculpture when the
- * chapter starts below the fold and motion is allowed. Revealed once, then
- * left alone: scrolling back up shows it as it is.
+ * A homepage chapter. Its picture in the forge field is chosen by its id
+ * (see SCENES in forge-field.tsx) and sits in its [data-stage] box. Its text
+ * is in the server HTML and visible without JavaScript; it only waits to be
+ * read in when the chapter starts below the fold and motion is allowed.
+ * Read in once, then left alone: scrolling back up shows it as it is.
  *
  * Reveal state lives in a data attribute (CSS does the animation), so a
  * reveal never re-renders React.
  */
 export function Chapter({
   id,
-  shape,
   first = false,
   labelledBy,
   className,
   children,
 }: {
   id: string;
-  /** Sculpture id (see shapeSDF in forge/shaders.ts). */
-  shape: number;
-  /** The hero: built from the start, its text never waits. */
+  /** The hero: its text never waits. */
   first?: boolean;
   labelledBy?: string;
   className?: string;
@@ -39,15 +36,15 @@ export function Chapter({
     const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const wait = !first && motion && startsBelow(el);
     if (wait) el.dataset.chapter = "waiting";
-    return registerChapter(el, shape, {
-      builtNow: !wait,
-      onBuilt: () => {
+    return registerChapter(el, {
+      revealedNow: !wait,
+      onReveal: () => {
         if (el.dataset.chapter !== "waiting") return;
         el.dataset.chapter = "revealed";
         countUp(el);
       },
     });
-  }, [shape, first]);
+  }, [first]);
 
   return (
     <section ref={ref} id={id} aria-labelledby={labelledBy} className={cn("chapter relative", className)}>
@@ -56,7 +53,7 @@ export function Chapter({
   );
 }
 
-/** Numbers marked data-count climb to their value once, when the chapter is revealed. */
+/** Numbers marked data-count climb to their value once, when the chapter is read in. */
 function countUp(root: HTMLElement) {
   root.querySelectorAll<HTMLElement>("[data-count]").forEach((node) => {
     const end = Number(node.dataset.count);

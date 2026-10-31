@@ -1,8 +1,8 @@
 /**
- * GLSL for the forge field: a GPU particle cloud that settles on one
- * sculpture per homepage chapter and is stirred by a small fluid simulation
- * driven by the cursor. Compiled by three's ShaderMaterial (WebGL2), which
- * maps texture2D / gl_FragColor for us.
+ * GLSL for the forge field: a GPU particle cloud that takes the shape of
+ * what each homepage chapter says (structures.ts), keeps flowing along it,
+ * and is stirred by a small fluid simulation driven by the cursor. Compiled
+ * by three's ShaderMaterial (WebGL2), which maps texture2D / gl_FragColor.
  */
 
 /** Full-screen pass: every simulation step renders one quad. */
@@ -13,114 +13,25 @@ void main() {
   gl_Position = vec4(position.xy, 0.0, 1.0);
 }`;
 
-/**
- * The points are summed in a half-float buffer, then rolled off here:
- * where hundreds of them stack (a node, a joint) the light saturates softly
- * instead of clipping to a white blot. Composited on the page background.
- */
-export const TONE_FRAG = /* glsl */ `
-uniform sampler2D uTex;
-uniform vec3 uBg;
-uniform float uExposure;
-varying vec2 vUv;
-void main() {
-  vec3 c = texture2D(uTex, vUv).rgb;
-  vec3 m = 1.0 - exp(-c * uExposure);
-  gl_FragColor = vec4(uBg + (1.0 - uBg) * m, 1.0);
-}`;
-
 export const COPY_FRAG = /* glsl */ `
 uniform sampler2D uSource;
 varying vec2 vUv;
 void main() { gl_FragColor = texture2D(uSource, vUv); }`;
 
-// ---------------------------------------------------------------- shapes
-// Signed distance functions of the sculptures, about 0.85 units across.
-// 0 = the Septune mark (chevrons around a point, in the logo's square),
-// 1 = a pull request (a branch leaving main and merging back),
-// 2 = a site (root page, sections, pages),
-// 3 = a fix (a check inside a ring).
-const SHAPES = /* glsl */ `
-float sdCapsule(vec3 p, vec3 a, vec3 b, float r) {
-  vec3 pa = p - a, ba = b - a;
-  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-  return length(pa - ba * h) - r;
-}
-float sdTorus(vec3 p, float R, float r) {
-  vec2 q = vec2(length(p.xy) - R, p.z);
-  return length(q) - r;
-}
-// Outline of a rounded square in the xy plane, as a tube of radius th.
-// ("half" is a reserved word in GLSL ES, hence hs.)
-float sdFrame(vec3 p, float hs, float rad, float th) {
-  vec2 q = abs(p.xy) - hs + rad;
-  float d2 = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rad;
-  return length(vec2(d2, p.z)) - th;
-}
-
-float sMark(vec3 p) {
-  float r = 0.072;
-  float d = sdCapsule(p, vec3(-0.22, 0.38, 0.0), vec3(-0.52, 0.0, 0.0), r);
-  d = min(d, sdCapsule(p, vec3(-0.52, 0.0, 0.0), vec3(-0.22, -0.38, 0.0), r));
-  d = min(d, sdCapsule(p, vec3(0.22, 0.38, 0.0), vec3(0.52, 0.0, 0.0), r * 0.8));
-  d = min(d, sdCapsule(p, vec3(0.52, 0.0, 0.0), vec3(0.22, -0.38, 0.0), r * 0.8));
-  d = min(d, length(p) - 0.12);
-  d = min(d, sdFrame(p, 0.84, 0.22, 0.03));
-  return d;
-}
-
-float sBranch(vec3 p) {
-  float d = sdCapsule(p, vec3(-0.3, -0.8, 0.0), vec3(-0.3, 0.8, 0.0), 0.05);
-  d = min(d, sdCapsule(p, vec3(-0.3, -0.45, 0.0), vec3(0.04, -0.27, 0.14), 0.042));
-  d = min(d, sdCapsule(p, vec3(0.04, -0.27, 0.14), vec3(0.32, 0.02, 0.2), 0.042));
-  d = min(d, sdCapsule(p, vec3(0.32, 0.02, 0.2), vec3(0.12, 0.33, 0.12), 0.042));
-  d = min(d, sdCapsule(p, vec3(0.12, 0.33, 0.12), vec3(-0.3, 0.5, 0.0), 0.042));
-  d = min(d, length(p - vec3(-0.3, -0.64, 0.0)) - 0.075);
-  d = min(d, length(p - vec3(-0.3, 0.66, 0.0)) - 0.075);
-  d = min(d, length(p - vec3(0.32, 0.02, 0.2)) - 0.085);
-  return d;
-}
-
-float sTree(vec3 p) {
-  vec3 root = vec3(0.0, 0.62, 0.0);
-  float d = length(p - root) - 0.11;
-  for (int i = 0; i < 3; i++) {
-    float a = float(i) * 2.0944 + 0.5;
-    vec3 c = vec3(cos(a) * 0.42, 0.06, sin(a) * 0.42);
-    d = min(d, sdCapsule(p, root, c, 0.024));
-    d = min(d, length(p - c) - 0.08);
-    for (int j = 0; j < 3; j++) {
-      float b = a + (float(j) - 1.0) * 0.62;
-      vec3 g = vec3(cos(b) * 0.74, -0.56, sin(b) * 0.74);
-      d = min(d, sdCapsule(p, c, g, 0.018));
-      d = min(d, length(p - g) - 0.055);
-    }
-  }
-  return d;
-}
-
-float sCheck(vec3 p) {
-  float d = sdTorus(p, 0.72, 0.04);
-  d = min(d, sdCapsule(p, vec3(-0.34, 0.02, 0.0), vec3(-0.1, -0.24, 0.0), 0.075));
-  d = min(d, sdCapsule(p, vec3(-0.1, -0.24, 0.0), vec3(0.37, 0.3, 0.0), 0.075));
-  return d;
-}
-
-float shapeSDF(float id, vec3 p) {
-  if (id < 0.5) return sMark(p);
-  if (id < 1.5) return sBranch(p);
-  if (id < 2.5) return sTree(p);
-  return sCheck(p);
-}
-// Tetrahedral gradient: four evaluations instead of six.
-vec3 shapeNormal(float id, vec3 p) {
-  const vec2 k = vec2(1.0, -1.0);
-  const float e = 0.002;
-  return normalize(
-    k.xyy * shapeSDF(id, p + k.xyy * e) + k.yyx * shapeSDF(id, p + k.yyx * e) +
-    k.yxy * shapeSDF(id, p + k.yxy * e) + k.xxx * shapeSDF(id, p + k.xxx * e));
-}
-`;
+/**
+ * The points are summed in a half-float buffer, then rolled off: where
+ * hundreds stack (a node, a joint) the light saturates softly instead of
+ * clipping. The canvas is blended onto the page with mix-blend-mode: screen,
+ * so this writes light only, never a background.
+ */
+export const TONE_FRAG = /* glsl */ `
+uniform sampler2D uTex;
+uniform float uExposure;
+varying vec2 vUv;
+void main() {
+  vec3 c = texture2D(uTex, vUv).rgb;
+  gl_FragColor = vec4(1.0 - exp(-c * uExposure), 1.0);
+}`;
 
 // Curl of a sine-sum potential: divergence-free drift, so the cloud swirls
 // instead of clumping.
@@ -143,74 +54,93 @@ vec3 curlNoise(vec3 p, float t) {
 `;
 
 /**
- * Runs once per sculpture at start-up: gives every particle its own place on
- * the surface (its start position projected onto the shape, plus a little
- * thickness). Particles then travel to that place. Pulling them onto the
- * nearest surface instead made particles that met follow the same path for
- * ever, and the sculptures broke into bright clumps after a few changes.
+ * Where a particle belongs right now in a structure (records a, b, c, see
+ * structures.ts), and how far along its segment it is (f). Shared by the
+ * simulation and the point shader so both agree on the flow.
+ * kinds: 0 flow, 1 node, 2 dust, 3 defect, 5 flow that moves up when the fix closes the gap.
+ * sid: 0 tree, 1 stream, 2 code, 3 sites. st.x is the chapter's own progress.
  */
-export const PROJECT_FRAG = /* glsl */ `
-uniform sampler2D uOrigin;
-uniform sampler2D uRandom;
-uniform float uShape;
-varying vec2 vUv;
-${SHAPES}
-void main() {
-  vec3 p = texture2D(uOrigin, vUv).xyz * 0.75;
-  vec4 rnd = texture2D(uRandom, vUv);
-  for (int i = 0; i < 24; i++) p -= shapeNormal(uShape, p) * shapeSDF(uShape, p);
-  p += shapeNormal(uShape, p) * (rnd.y - 0.5) * 0.035;
-  gl_FragColor = vec4(p, 1.0);
-}`;
+const HOME = /* glsl */ `
+vec3 homeOf(vec4 a, vec4 b, vec4 c, float sid, vec4 st, vec4 rnd, float t, out float f) {
+  float kind = c.y;
+  vec3 p = a.xyz;
+  f = 0.5;
+  if (a.w > 0.0) {
+    f = fract(b.w + t * a.w);
+    // Stream: pages that would leave Google pile up at the pull request.
+    if (kind > 2.5 && kind < 3.5 && sid > 0.5 && sid < 1.5) f = min(1.0, f * 1.35);
+    p = mix(a.xyz, b.xyz, f);
+  }
+  if (kind > 1.5 && kind < 2.5) {
+    p += 0.14 * vec3(sin(t * 0.31 + rnd.x * 6.28), cos(t * 0.27 + rnd.y * 6.28), sin(t * 0.23 + rnd.z * 6.28));
+  } else if (a.w == 0.0) {
+    p += 0.008 * vec3(sin(t * 1.3 + rnd.x * 6.28), cos(t * 1.1 + rnd.y * 6.28), sin(t * 0.9 + rnd.z * 6.28));
+  }
+  if (sid > 1.5 && sid < 2.5) {
+    // Code: the line that sets noindex lifts out, the lines below close the gap.
+    float lift = smoothstep(0.05, 0.6, st.x);
+    if (kind > 2.5 && kind < 3.5) p += vec3((rnd.x - 0.5) * 1.6, 0.45 + rnd.y * 0.9, (rnd.z - 0.5) * 1.2) * lift;
+    if (kind > 4.5) p.y += c.w * smoothstep(0.35, 0.8, st.x);
+  }
+  return p;
+}
+`;
 
 /**
- * One simulation step per frame. Each particle belongs to sculpture A or B:
- * it switches to B once uMix passes its own random threshold, so a sculpture
- * is built (or rebuilt into the next one) a few particles at a time. A
- * sculpture that is "none" (uHasA/uHasB = 0) is the loose starting cloud.
+ * One simulation step per frame. Each particle belongs to structure 0 or 1
+ * (the two chapters the scroll is between): it switches to structure 1 once
+ * uMix passes its own random threshold, so one picture turns into the next a
+ * few particles at a time, both ways, following the scroll.
  */
 export const SIM_FRAG = /* glsl */ `
 uniform sampler2D uPos;
-uniform sampler2D uOrigin;
 uniform sampler2D uRandom;
-uniform sampler2D uHomeA;   // each particle's place on sculpture A
-uniform sampler2D uHomeB;
-uniform float uHasA;
-uniform float uHasB;
-uniform sampler2D uVel;
-uniform sampler2D uDye;
+uniform sampler2D uA0;
+uniform sampler2D uB0;
+uniform sampler2D uC0;
+uniform sampler2D uA1;
+uniform sampler2D uB1;
+uniform sampler2D uC1;
+uniform float uSid0;
+uniform float uSid1;
+uniform vec4 uSt0;
+uniform vec4 uSt1;
+uniform float uMix;
 uniform float uTime;
 uniform float uHZ;
-uniform float uMix;
 uniform float uMotion;     // 0 when the visitor asked for reduced motion
 uniform float uStrength;   // how hard the fluid pushes
+uniform sampler2D uVel;
+uniform sampler2D uDye;
 uniform mat4 uProj;        // projection * view
-uniform mat4 uModel;       // sculpture group, world matrix
-uniform mat3 uInvModel;    // world direction -> sculpture space
+uniform mat4 uModel;       // structure group, world matrix
+uniform mat3 uInvModel;    // world direction -> structure space
 uniform vec2 uFlowScale;   // world units per fluid texel, x and y
 varying vec2 vUv;
 ${CURL}
+${HOME}
 void main() {
-  vec3 pos = texture2D(uPos, vUv).xyz;
   vec4 rnd = texture2D(uRandom, vUv);
-  bool onB = rnd.w < uMix;
-  float has = onB ? uHasB : uHasA;
-  vec3 home = has > 0.5
-    ? (onB ? texture2D(uHomeB, vUv).xyz : texture2D(uHomeA, vUv).xyz)
-    : texture2D(uOrigin, vUv).xyz;
+  bool one = rnd.w < uMix;
+  vec4 a = one ? texture2D(uA1, vUv) : texture2D(uA0, vUv);
+  vec4 b = one ? texture2D(uB1, vUv) : texture2D(uB0, vUv);
+  vec4 c = one ? texture2D(uC1, vUv) : texture2D(uC0, vUv);
+  float f;
+  vec3 home = homeOf(a, b, c, one ? uSid1 : uSid0, one ? uSt1 : uSt0, rnd, uTime, f);
 
-  pos += normalize(curlNoise(pos * 0.9, uTime * 0.05) + 1e-5) * 0.0007 * uHZ * uMotion;
+  vec3 pos = texture2D(uPos, vUv).xyz;
+  // A flow that wraps from the end of its segment back to the start jumps
+  // there instead of travelling back across the picture (it is faded out
+  // at both ends by the point shader).
+  if (a.w > 0.0 && f < 0.012) pos = home;
 
-  // Travel home at a capped speed, slowing at the end. The distance left is
-  // written to .w so the renderer dims travellers into dust.
   vec3 to = home - pos;
   float travel = length(to);
-  pos += to / max(travel, 1e-5) * min(travel * 0.07, 0.028) * uHZ;
-  // Far from home each particle drifts on its own noise: the trip reads as
-  // dust settling, not as particles queuing on the same path.
+  pos += to / max(travel, 1e-5) * min(travel * 0.1, 0.045) * uHZ;
+  // On a long trip each particle drifts on its own noise: the change reads
+  // as dust resettling, not as particles queuing on the same path.
   vec3 dust = normalize(curlNoise(pos * 2.3 + rnd.xyz * 6.0, uTime * 0.3) + 1e-5);
-  pos += dust * 0.006 * smoothstep(0.04, 0.45, travel) * uHZ * uMotion;
-  if (has < 0.5) travel = 0.6;
+  pos += dust * 0.006 * smoothstep(0.05, 0.5, travel) * uHZ * uMotion;
 
   // The fluid only pushes where the cursor has been (dye mask).
   vec4 clip = uProj * (uModel * vec4(pos, 1.0));
@@ -222,49 +152,107 @@ void main() {
     pos += push * (1.0 / 60.0) * uHZ * uStrength * min(dye, 1.0);
   }
 
-  if (length(pos) > 3.0) pos *= 0.5;
+  if (length(pos) > 8.0) pos = home;
   gl_FragColor = vec4(pos, travel);
 }`;
 
-/** Each point looks up its position in the simulation texture. */
+/** Each point reads its position from the simulation and its colour from what it stands for. */
 export const POINTS_VERT = /* glsl */ `
 uniform sampler2D uPos;
+uniform sampler2D uA0;
+uniform sampler2D uB0;
+uniform sampler2D uC0;
+uniform sampler2D uA1;
+uniform sampler2D uB1;
+uniform sampler2D uC1;
+uniform float uSid0;
+uniform float uSid1;
+uniform vec4 uSt0;
+uniform vec4 uSt1;
+uniform float uMix;
+uniform float uTime;
 uniform float uSize;
 uniform float uDPR;
 attribute vec2 ref;
 attribute vec4 rnd;
-varying vec4 vRnd;
-varying float vTravel;
+varying vec3 vCol;
+${HOME}
+const vec3 BONE = vec3(0.95, 0.92, 0.86);
+const vec3 VERD = vec3(0.33, 0.8, 0.71);
+const vec3 MOLT = vec3(1.0, 0.42, 0.17);
 void main() {
   vec4 state = texture2D(uPos, ref);
-  vec3 pos = state.xyz;
-  vTravel = state.w;
-  pos *= mix(1.0, 1.4, pow(rnd.y, 150.0));
-  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  bool one = rnd.w < uMix;
+  vec4 a = one ? texture2D(uA1, ref) : texture2D(uA0, ref);
+  vec4 b = one ? texture2D(uB1, ref) : texture2D(uB0, ref);
+  vec4 c = one ? texture2D(uC1, ref) : texture2D(uC0, ref);
+  float sid = one ? uSid1 : uSid0;
+  vec4 st = one ? uSt1 : uSt0;
+  float f;
+  homeOf(a, b, c, sid, st, rnd, uTime, f);
+  float kind = c.y;
+  float order = c.x;
+
+  // Two dominant tones in the particles themselves, bone and verdigris.
+  vec3 col = mix(BONE, VERD, smoothstep(0.35, 0.8, rnd.x));
+  float bright = (kind > 0.5 && kind < 1.5) ? 1.0 : 0.62;
+  if (kind > 1.5 && kind < 2.5) bright = 0.3;
+  // A few molten packets ride every flow: the crawler at work.
+  bool packet = kind < 0.5 && rnd.z > 0.968;
+  if (packet) { col = MOLT; bright = 2.2; }
+
+  if (sid < 0.5) {
+    // Tree: the crawl front. Pages behind it are read (greener, brighter), ahead still dim.
+    if (st.x > -0.5) {
+      float band = exp(-pow((order - st.x) / 0.045, 2.0));
+      float done = step(order, st.x);
+      col = mix(col, VERD, done * 0.6);
+      bright *= mix(0.5, 1.15, done);
+      col = mix(col, MOLT, band);
+      bright += band * 0.9;
+    }
+  } else if (sid < 1.5) {
+    if (kind > 2.5 && kind < 3.5) { col = MOLT; bright = 1.25; }
+    if (c.w > 0.5) { col = mix(BONE, MOLT, 0.3 + 0.7 * st.x); bright = 1.25; }
+  } else if (sid < 2.5) {
+    // Code: tokens in two tones (c.x), like highlighted source.
+    if (kind < 1.5 || kind > 4.5) col = order > 0.62 ? VERD : order < 0.2 ? BONE * 0.6 : BONE;
+    if (kind > 2.5 && kind < 3.5) { col = MOLT; bright = 1.25 * (1.0 - smoothstep(0.35, 0.7, st.x)); }
+    else if (kind < 1.5 || kind > 4.5) col = mix(col, VERD, smoothstep(0.7, 1.0, st.x) * 0.7);
+  } else {
+    // Sites: as many light up as the plan watches.
+    float lit = step(order, st.x);
+    col = mix(BONE * 0.7, VERD, lit);
+    bright *= mix(0.28, 1.15, lit);
+  }
+
+  // Fade at both ends of a segment so the jump back to its start is never seen;
+  // stream defects stay lit at the gate where they pile up.
+  float ends = 1.0;
+  if (a.w > 0.0) {
+    ends = smoothstep(0.0, 0.06, f);
+    if (!(kind > 2.5 && kind < 3.5 && sid > 0.5 && sid < 1.5)) ends *= 1.0 - smoothstep(0.94, 1.0, f);
+  }
+  // Travellers between two pictures are dust; they light up once they arrive.
+  float settled = mix(1.0, 0.3, smoothstep(0.04, 0.4, state.w));
+  vCol = col * bright * ends * settled;
+
+  vec4 mv = modelViewMatrix * vec4(state.xyz, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uSize * uDPR * mix(0.55, 1.0, rnd.z) * (6.0 / -mv.z);
-  vRnd = rnd;
+  gl_PointSize = uSize * uDPR * c.z * mix(0.6, 1.0, rnd.z) * (packet ? 1.7 : 1.0) * (6.0 / -mv.z);
 }`;
 
-/** Soft shaded sprite, mostly warm grey, a few molten points that glint. */
+/** Soft shaded sprite. */
 export const POINTS_FRAG = /* glsl */ `
-uniform float uTime;
 uniform float uOpacity;
-uniform vec3 uAccent;
-varying vec4 vRnd;
-varying float vTravel;
+varying vec3 vCol;
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
   if (r2 > 1.0) discard;
   vec3 n = vec3(c.x, -c.y, sqrt(1.0 - r2));
-  float light = 0.35 + 0.65 * clamp(dot(n, normalize(vec3(-0.4, 0.6, 0.7))), 0.0, 1.0);
-  vec3 base = vec3(1.0, 0.94, 0.88) * mix(0.05, 0.24, vRnd.x);
-  vec3 col = mix(base, uAccent, pow(vRnd.z, 40.0));
-  float glint = 1.0 + (0.4 + sin(uTime * 4.0 + vRnd.y * 20.0)) * pow(vRnd.z, 10.0) * 1.6;
-  // Travelling particles are dust; they light up once they reach the sculpture.
-  float settled = mix(1.0, 0.28, smoothstep(0.03, 0.35, vTravel));
-  gl_FragColor = vec4(col * light * glint * settled * uOpacity, 1.0);
+  float light = 0.4 + 0.6 * clamp(dot(n, normalize(vec3(-0.4, 0.6, 0.7))), 0.0, 1.0);
+  gl_FragColor = vec4(vCol * light * (1.0 - 0.45 * r2) * 0.27 * uOpacity, 1.0);
 }`;
 
 // ---------------------------------------------------------------- fluid
