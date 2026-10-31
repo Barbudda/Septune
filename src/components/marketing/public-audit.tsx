@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, Search, Terminal, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -100,9 +100,8 @@ export function PublicAudit() {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
 
-  const run = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim() || loading) return;
+  const audit = async (target: string) => {
+    if (!target.trim() || loading) return;
     setLoading(true);
     setError(null);
     setReport(null);
@@ -110,7 +109,7 @@ export function PublicAudit() {
       const res = await fetch("/api/public-audit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: target.trim() }),
       });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? "Audit failed.");
@@ -121,6 +120,25 @@ export function PublicAudit() {
       setLoading(false);
     }
   };
+
+  const run = (e: React.FormEvent) => {
+    e.preventDefault();
+    void audit(url);
+  };
+
+  // The homepage form sends ?url=…: start that audit straight away. Read
+  // client-side so /audit stays a static page. The deferred start is
+  // cancelled by the cleanup, so it runs once even when React mounts twice.
+  useEffect(() => {
+    const given = new URLSearchParams(window.location.search).get("url");
+    if (!given?.trim()) return;
+    const t = window.setTimeout(() => {
+      setUrl(given.trim());
+      void audit(given);
+    }, 0);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on arrival
+  }, []);
 
   const cliCmd = `npx septune audit ${report?.url ?? (url.trim() || "https://your-site.com")}`;
 
