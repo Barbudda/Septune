@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { PrCheckCard } from "./pr-card";
 import { FlowField } from "./dots/flow-field-layer";
+import { TourVideo } from "./tour-video";
 
 const FRAMEWORKS = ["Next.js", "Nuxt", "Astro", "SvelteKit", "Remix", "MDX"];
 
@@ -73,7 +74,16 @@ export function Hero() {
               variants={item}
               initial={false}
               transition={{ duration: 0.6 }}
-              className="mt-10"
+              className="mt-5"
+            >
+              <TourVideo className="-ml-1" />
+            </motion.div>
+
+            <motion.div
+              variants={item}
+              initial={false}
+              transition={{ duration: 0.6 }}
+              className="mt-8"
             >
               <p className="text-sm text-fg-subtle">
                 Or straight from your terminal, nothing to install
