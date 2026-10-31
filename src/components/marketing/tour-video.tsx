@@ -49,7 +49,7 @@ export function TourVideo({ className }: { className?: string }) {
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
         className={cn(
-          "group inline-flex items-center gap-3 rounded-full py-1 pr-3 pl-1 text-sm text-fg-muted transition-colors duration-200 hover:text-fg",
+          "group inline-flex items-center gap-3 rounded-full py-1 pr-3 pl-1 font-mono text-[13px] text-fg-muted transition-colors duration-200 hover:text-fg",
           className,
         )}
       >
@@ -65,8 +65,8 @@ export function TourVideo({ className }: { className?: string }) {
             </svg>
           </span>
         </span>
-        <span>Watch the overview</span>
-        <span className="font-mono text-xs text-fg-subtle">0:23</span>
+        <span>watch the overview</span>
+        <span className="text-fg-subtle">0:23</span>
       </button>
 
       <dialog

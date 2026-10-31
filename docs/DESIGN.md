@@ -1,7 +1,47 @@
 # Septune, direction artistique
 
-Refonte du 2026-10-08. Périmètre de la première passe : le site marketing. Le tableau de bord
-hérite des jetons (couleurs, polices) mais pas encore des compositions.
+## Refonte du 2026-10-31 : la forge en particules (en vigueur sur le site marketing)
+
+Décision complète et mesures : [ADR 0003](adr/0003-accueil-en-chapitres-sculptes.md). Ce bloc
+remplace, **pour le site marketing**, le verre liquide et la scène de fond décrits plus bas. Ces
+sections restent à jour pour l'application, qui garde son verre.
+
+**Mot de ton : l'établi.** Un outil posé sur une table propre : une sculpture qui se forme, une
+ligne de texte en mono, rien qui encombre.
+
+- **Le matériau, c'est le nuage de points.** Les particules sont les pages d'un site : en
+  désordre, elles se rangent en une sculpture ; la souris les dérange (un petit fluide), elles
+  se remettent en place. Il y a une sculpture par chapitre de l'accueil :
+  - le logo (deux chevrons autour d'un point, dans son carré) ;
+  - une pull request ;
+  - l'arbre d'un site ;
+  - une coche dans un anneau ;
+  - le logo encore.
+
+  Points gris chaud, quelques points en fusion qui scintillent, lumière compressée en douceur
+  pour que les nœuds denses ne saturent pas.
+- **La construction suit le scroll, une seule fois.**
+  - **La construction :** la sculpture d'un chapitre se forme pendant qu'il entre à l'écran,
+    dans la partie déjà visible de ce chapitre. Elle ne passe jamais derrière le texte du dessus.
+  - **La révélation :** une fois construite, la sculpture glisse à droite (en haut, atténuée,
+    sur mobile) et le texte se lit d'un balayage de gauche à droite.
+  - **La remontée :** rien ne se rejoue. Seule la sculpture reprend la forme du chapitre, en
+    moins d'une seconde.
+- **Surfaces : des filets, pas du verre.** Plaques plates à filet de 1 px (`.forge-ui .lg`),
+  étiquettes sur fond `elevated`, blocs de code sur `code`. Pas d'ombre, pas de flou.
+- **Interface en mono minuscule** (JetBrains Mono 13 px) : navigation, étiquettes entre
+  crochets (`[where it's caught]`, en `molten-bright`), liens soulignés d'un filet qui passe à
+  l'orange au survol. Fraunces reste pour les titres, Schibsted Grotesk pour le texte courant.
+  Pas de capitales : les labels en capitales sont un tic de page générée.
+- **Navigation :** une ligne, sans barre. Le logo, `audit`, `docs`, `pricing`, `sign in`, et une
+  pastille ronde avec le nombre de contrôles. Un fondu vers le fond la garde lisible.
+- **Repli :** la scène se charge après le premier affichage. Sans WebGL2, la page se lit sans elle.
+  Avec `prefers-reduced-motion`, les sculptures sont fixes et tout le texte est visible d'emblée.
+
+## Refonte du 2026-10-08 (verre liquide, en vigueur dans l'application)
+
+Périmètre de la première passe : le site marketing. Le tableau de bord hérite des jetons
+(couleurs, polices) mais pas encore des compositions.
 
 ## Concept : la forge, en verre liquide
 

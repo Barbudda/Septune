@@ -1,113 +1,94 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
-import { useLiquidRefraction } from "@/components/ui/liquid-refraction";
 
 const LINKS = [
-  { href: "/audit", label: "Free audit" },
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/#features", label: "Features" },
-  { href: "/#editor", label: "In your editor" },
-  { href: "/#security", label: "Security" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/audit", label: "audit" },
+  { href: "/docs", label: "docs" },
+  { href: "/pricing", label: "pricing" },
 ];
 
-export function SiteNav() {
-  const [scrolled, setScrolled] = useState(false);
-  const [open, setOpen] = useState(false);
-  const bar = useRef<HTMLElement>(null);
-  useLiquidRefraction(bar, { bezel: 14, thickness: 18, blur: 10 });
+const LINK =
+  "font-mono text-[13px] text-fg-muted transition-colors duration-200 hover:text-fg aria-[current=page]:text-fg";
 
+/**
+ * A thin monospace line over the page: the mark, three links, sign in, and
+ * a round counter with the number of checks (it opens the docs that list
+ * them). No bar, no glass: a fade keeps it readable over the content.
+ */
+export function SiteNav({ checks }: { checks: number }) {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // The menu closes on Escape, and on any link (onClick below).
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const current = (href: string) => (pathname === href || pathname.startsWith(`${href}/`) ? "page" : undefined);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3">
-      {/* Floating liquid-glass bar. A touch denser once content scrolls under it. */}
-      <nav
-        ref={bar}
-        className={cn(
-          "lg mx-auto flex h-14 max-w-[76rem] items-center justify-between rounded-full pr-2 pl-5 transition-[background-color] duration-300",
-          scrolled && "bg-[rgb(18_15_13/0.62)]",
-        )}
-      >
-        <Link href="/" aria-label="Septune home">
+    <header className="fixed inset-x-0 top-0 z-50">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-bg via-bg/75 to-transparent" />
+      <nav aria-label="Main" className="container-rf relative flex h-18 items-center gap-7">
+        <Link href="/" aria-label="Septune home" className="rounded-full">
           <Logo />
         </Link>
 
-        <div className="hidden items-center gap-1 lg:flex">
+        <div className="ml-auto hidden items-center gap-7 md:flex">
           {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-white/[0.07] hover:text-fg hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.12)]"
-            >
+            <Link key={l.href} href={l.href} aria-current={current(l.href)} className={LINK}>
               {l.label}
             </Link>
           ))}
+          <Link href="/login" className={LINK}>
+            sign in
+          </Link>
         </div>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          <Link
-            href="/login"
-            className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-white/[0.07] hover:text-fg"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/signup"
-            className="lg lg-molten inline-flex h-9 items-center gap-2 whitespace-nowrap px-4 text-sm font-medium rounded-full transition-[filter] hover:brightness-110"
-          >
-            Start free
-          </Link>
-        </div>
+        <Link
+          href="/docs"
+          aria-label={`${checks} checks: see what Septune measures`}
+          title={`${checks} checks`}
+          className="ml-auto grid size-11 shrink-0 place-items-center rounded-full border border-border bg-bg font-mono text-sm text-fg transition-colors duration-200 hover:border-molten/70 md:ml-0"
+        >
+          {checks}
+        </Link>
 
         <button
-          className="grid size-9 place-items-center rounded-full text-fg hover:bg-white/[0.07] lg:hidden"
+          type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
           aria-expanded={open}
+          aria-controls="site-menu"
+          className={cn(LINK, "rounded-full py-2 md:hidden")}
         >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          {open ? "close" : "menu"}
         </button>
       </nav>
 
       {open && (
-        <div className="lg mx-auto mt-2 max-w-[76rem] rounded-3xl lg:hidden">
-          <div className="flex flex-col px-4 py-3">
-            {LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-3 text-sm text-fg-muted hover:text-fg"
-              >
-                {l.label}
-              </Link>
+        <div id="site-menu" className="container-rf relative border-b border-border bg-bg pb-6 md:hidden">
+          <ul className="border-t border-border">
+            {[...LINKS, { href: "/login", label: "sign in" }, { href: "/signup", label: "start free" }].map((l) => (
+              <li key={l.href} className="border-b border-border">
+                <Link
+                  href={l.href}
+                  aria-current={current(l.href)}
+                  onClick={() => setOpen(false)}
+                  className={cn(LINK, "block py-4 text-base")}
+                >
+                  {l.label}
+                </Link>
+              </li>
             ))}
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="rounded-md px-2 py-3 text-sm text-fg-muted hover:text-fg"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setOpen(false)}
-              className="lg lg-molten mt-2 inline-flex h-10 items-center justify-center gap-2 px-4 text-sm font-medium rounded-full transition-[filter] hover:brightness-110"
-            >
-              Start free
-            </Link>
-          </div>
+          </ul>
         </div>
       )}
     </header>
