@@ -49,6 +49,20 @@
   /* Molten darkened for text on bone (5.2:1). */
   --color-molten-deep: #a8380a;
 
+  /* Marketing palette since the 2026-11-01 evening redesign (docs/DESIGN.md,
+     ADR 0006): two plain colours that go together, paper and ultramarine,
+     and one vivid, lime. Contrast, computed: navy on paper 15.6:1,
+     ultramarine on paper 6.5:1, white on ultramarine 7.1:1, lime on
+     ultramarine 5.6:1, navy on lime 13.5:1. */
+  --color-paper: oklch(97% 0.008 271.3); /* #f3f5fb */
+  --color-paper-deep: oklch(94.8% 0.014 264.5); /* #e9eef8 */
+  --color-navy: oklch(23.2% 0.073 267.1); /* #0e1a3f */
+  --color-ultramarine: oklch(48.1% 0.247 267); /* #2440e6 */
+  --color-ultramarine-deep: oklch(41% 0.208 267); /* #1b33b8 */
+  --color-lime: oklch(91.1% 0.195 118); /* #d7f23c */
+  --color-on-blue: oklch(92.7% 0.035 273.3); /* #dfe6ff, 5.7:1 on ultramarine */
+  --color-on-blue-muted: oklch(87.6% 0.061 273.8); /* #c9d4ff, 4.9:1 on ultramarine */
+
   /* Fonts (wired by next/font in layout.tsx) */
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
@@ -294,231 +308,563 @@
     }
   }
 
-  /* ── Marketing surface (docs/DESIGN.md, 2026-10-31 evening) ──────────
-     The marketing layout redefines the colour tokens: every utility under
-     .forge-ui resolves to petrol, verdigris, bone and molten, while the app
-     keeps its own. Two dominant tones and one vivid one; no black. */
+  /* ── Marketing surface (docs/DESIGN.md, 2026-11-01 evening, ADR 0006) ──
+     Two plain colours that go together, paper and ultramarine, and one
+     vivid, lime. The marketing layout redefines the colour tokens: every
+     utility under .forge-ui resolves to them, while the app keeps its own.
+     Text contrast on paper, computed: fg 15.6:1, muted 8.4:1, subtle 5.6:1
+     (5.2:1 on paper-deep), links in ultramarine 6.5:1, signal 5:1, amber
+     4.6:1, danger 5.2:1. Lime is never text on paper: it is a fill under navy
+     text (13.5:1), or text on the blue (5.6:1). */
+  /* The support chat is mounted next to the layout, not inside it: it takes
+     the same tokens through the sibling selector. Not body:has(.forge-ui) …:
+     that made every text change restyle the whole page (60 to 160 ms frames
+     on a 4x-throttled phone, 2026-11-01). */
+  .forge-ui,
+  .forge-ui ~ .support-chat {
+    --color-bg: var(--color-paper);
+    --color-bg-soft: var(--color-paper-deep);
+    --color-surface: oklch(100% 0 0);
+    --color-surface-2: oklch(100% 0 0 / 0.7);
+    --color-elevated: oklch(100% 0 0);
+    --color-border: oklch(23.2% 0.073 267 / 0.14);
+    --color-border-soft: oklch(23.2% 0.073 267 / 0.08);
+    --color-code: var(--color-paper-deep);
+    --color-fg: var(--color-navy);
+    --color-fg-muted: oklch(40.2% 0.06 267.7);
+    --color-fg-subtle: oklch(49.7% 0.049 267.1);
+    --color-ink: var(--color-navy);
+    /* Primary actions are lime with navy text; links and labels ultramarine. */
+    --color-molten: var(--color-lime);
+    --color-molten-bright: var(--color-ultramarine);
+    --color-molten-deep: var(--color-ultramarine-deep);
+    --color-verdigris: var(--color-ultramarine);
+    --color-verdigris-soft: var(--color-ultramarine);
+    --color-bone: oklch(100% 0 0);
+    --color-ink-on-bone: var(--color-navy);
+    --color-signal: oklch(51.1% 0.124 152.9);
+    --color-cyan: oklch(50.9% 0.087 215.1);
+    --color-amber: oklch(55.5% 0.146 49);
+    --color-danger: oklch(53.9% 0.194 26.7);
+    --color-critical: oklch(53.9% 0.194 26.7);
+    --color-high: oklch(55.5% 0.146 49);
+    --color-medium: oklch(55.5% 0.146 49);
+    --color-low: oklch(51.1% 0.124 152.9);
+  }
   .forge-ui {
-    --color-bg: #041b1f;
-    --color-bg-soft: #06242a;
-    --color-surface: #072a30;
-    --color-elevated: #0b343a;
-    --color-border: #174b51;
-    --color-border-soft: #0f3c42;
-    --color-code: #031417;
-    --color-fg: #f1ebdf;
-    --color-fg-muted: #b2c4bf;
-    --color-fg-subtle: #86a19c;
-    --color-ink: #041b1f;
-    --color-molten: #ff6a2b;
-    --color-molten-bright: #ff8a55;
-    --color-signal: #8fdccf;
-    --color-cyan: #4fbfae;
-    --color-danger: #ff6a2b;
-    --color-amber: #f3c98b;
     background-color: var(--color-bg);
     color: var(--color-fg);
   }
-  /* A fine grain over the whole surface, above the particles and under the
-     text: the petrol reads as a material, not a flat screen colour. */
+  .forge-ui :focus-visible,
+  .forge-ui ~ .support-chat :focus-visible {
+    outline-color: var(--color-ultramarine);
+  }
+  /* A fine grain over the whole surface, under the text: the paper reads
+     as a material, and the blue as ink rather than a flat screen colour. */
   .forge-ui::before {
     content: "";
     position: fixed;
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    opacity: 0.07;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.1 0 0 0 0 0.25 0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* The hero: deep petrol at the top, a verdigris haze where the site tree
-     grows, and an ember at its root, the forge under the horizon. */
-  .hero-field {
-    background:
-      linear-gradient(180deg, transparent 82%, #041b1f 100%),
-      radial-gradient(34% 20% at 50% 90%, rgb(255 106 43 / 0.34), transparent 75%),
-      radial-gradient(70% 46% at 50% 88%, rgb(79 191 174 / 0.26), transparent 75%),
-      radial-gradient(120% 70% at 50% 112%, rgb(17 74 80 / 0.9), transparent 70%),
-      linear-gradient(180deg, #021316 0%, #041b1f 46%, #06272c 88%, #041b1f 100%);
+  /* On the blue (the hero, the last call, the nav over the hero) the same
+     utilities turn light: the tokens are redefined for that ground. */
+  .on-blue,
+  .hero,
+  .cta-band {
+    --color-fg: oklch(100% 0 0);
+    --color-fg-muted: var(--color-on-blue);
+    --color-fg-subtle: var(--color-on-blue-muted);
+    --color-border: oklch(100% 0 0 / 0.28);
+    --color-code: oklch(100% 0 0 / 0.12);
+    --color-bg: var(--color-ultramarine);
+    --title-em: var(--color-lime);
+    color: var(--color-fg);
   }
-  .footer-ember {
-    background: radial-gradient(40% 70% at 50% 100%, rgb(255 106 43 / 0.22), transparent 75%);
-  }
-  .hero-clearing {
-    background: radial-gradient(44% 46% at 50% 48%, rgb(4 27 31 / 0.82), rgb(4 27 31 / 0.45) 58%, transparent 80%);
-  }
-  /* Bone panels: the product's own output (a check, a diff, a plan), set
-     like paper on the petrol. */
-  .panel-bone {
-    background: var(--color-bone);
-    color: var(--color-ink-on-bone);
-    border-radius: 6px;
-    box-shadow: 0 24px 48px -28px rgb(0 0 0 / 0.7);
+  .hero :focus-visible,
+  .cta-band :focus-visible,
+  .on-blue :focus-visible {
+    outline-color: var(--color-lime);
   }
 
-  /* Plates (forge/plate.tsx): the ground each chapter's picture is drawn on.
-     A field of verdigris against the petrol, so the page is never one dark
-     sheet; the picture's light is screen-blended onto it and may run past
-     its edge. */
-  .plate {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  /* ── Hero: the first stage. A pool of lighter blue where the globe turns. */
+  .hero {
     background:
-      radial-gradient(60% 55% at 58% 42%, rgb(79 191 174 / 0.2), transparent 72%),
-      linear-gradient(155deg, #0f4a4f 0%, #0b3a3f 48%, #072d32 100%);
-    box-shadow: inset 0 0 0 1px rgb(143 220 207 / 0.13);
+      radial-gradient(62% 52% at 50% 36%, oklch(55% 0.235 268 / 0.85), transparent 72%),
+      var(--color-ultramarine);
   }
-  .plate-ember {
-    background:
-      radial-gradient(30% 24% at 56% 38%, rgb(255 106 43 / 0.2), transparent 75%),
-      radial-gradient(60% 55% at 58% 42%, rgb(79 191 174 / 0.15), transparent 72%),
-      linear-gradient(155deg, #0f4a4f 0%, #0b3a3f 48%, #072d32 100%);
+  /* The figure's box: in the flow above the words, so it only ever gets the
+     room they leave (at least a third of the screen). */
+  .hero-stage {
+    flex: 1 1 auto;
+    min-height: 34svh;
+    margin-bottom: 1.5rem;
   }
-  /* Beside the text: full width on small screens, bled to the right edge of
-     the screen on large ones (the container's padding plus its outer margin). */
-  .plate-side {
-    height: 52svh;
-    margin-inline: -1.25rem;
-  }
-  .plate-band {
-    height: 46svh;
-  }
-  .plate-caption {
-    padding: 12px 20px;
-    border-top: 1px solid rgb(143 220 207 / 0.14);
-    background: rgb(4 27 31 / 0.55);
-  }
-  .plate-band .plate-caption {
-    margin-inline: -1.25rem;
-  }
-  @media (min-width: 768px) {
-    .plate-side {
-      margin-inline: -2rem;
-    }
-    .plate-band {
-      height: 50svh;
-    }
-    .plate-band .plate-caption {
-      margin-inline: 0;
-      border-inline: 1px solid rgb(143 220 207 / 0.14);
-      border-radius: 6px 6px 0 0;
-    }
-  }
-  @media (min-width: 1024px) {
-    .plate-side {
-      height: 78svh;
-      margin-left: 0;
-      margin-right: calc(-2rem - max(0px, (100vw - 80rem) / 2));
-      border-radius: 28px 0 0 28px;
-    }
-    .plate-side .plate-caption {
-      padding-left: 28px;
-      padding-right: calc(2rem + max(0px, (100vw - 80rem) / 2));
-    }
-  }
-
-  /* The log behind a picture: faint, moving up a line at a time with the
-     reading (chapter.tsx). Opacity on the column (not an alpha colour) so the
-     molten lines fade with the rest. */
-  .ledger {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 50%;
-    overflow: hidden;
-    padding: 24px 28px;
+  .hero-pill {
+    display: inline-flex;
+    white-space: nowrap;
+    align-items: center;
+    gap: 0.625rem;
+    border-radius: 999px;
+    border: 1px solid oklch(100% 0 0 / 0.3);
+    padding: 0.375rem 0.875rem;
     font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 20px;
-    white-space: pre;
-    color: var(--color-verdigris-soft);
-    opacity: 0.15;
-    pointer-events: none;
-    user-select: none;
-    mask-image: linear-gradient(180deg, transparent, #000 14%, #000 66%, transparent 90%);
+    font-size: 12px;
+    color: var(--color-on-blue);
   }
-  /* Each column fades toward the middle of the plate, where the picture is. */
-  .ledger .ledger-roll {
-    mask-image: linear-gradient(90deg, #000 35%, transparent 95%);
+  @media (min-width: 640px) {
+    .hero-pill {
+      font-size: 13px;
+    }
   }
-  .ledger-right {
-    left: auto;
-    right: 0;
+  .hero-title {
+    --title-tracking: -0.035em;
+    margin-top: 1.25rem;
+    font-size: clamp(3.4rem, 8.6vw, 8.6rem);
+    line-height: 0.92;
+    color: oklch(100% 0 0);
+  }
+
+  /* Headlines read in letter by letter, each clearing from a blur (the
+     reference video, 2026-11-01). The hero's plays on load; the others when
+     they come into view (Reveal in forge/reveal.tsx). */
+  .hero-title .l {
+    animation: letter-in 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(120ms + var(--i) * 30ms);
+  }
+  [data-reveal="waiting"] .letters .l {
+    opacity: 0;
+    filter: blur(10px);
+  }
+  [data-reveal="shown"] .letters .l {
+    animation: letter-in 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--d, 0) * 1ms + var(--i) * 18ms);
+  }
+  @keyframes letter-in {
+    from {
+      opacity: 0;
+      filter: blur(10px);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+  /* On touch screens a headline reads in as one block: letter by letter, the
+     blur cost a third of the frame budget on a 4x-throttled phone (trace of
+     2026-11-01), and the hero's headline is the page's LCP. */
+  @media (pointer: coarse) {
+    .hero-title .l,
+    [data-reveal] .letters .l {
+      animation: none;
+      opacity: 1;
+      filter: none;
+    }
+    [data-reveal="waiting"].step-title {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    [data-reveal="shown"].step-title {
+      animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation-delay: calc(var(--d, 0) * 1ms);
+    }
+  }
+  /* Everything else rises a little and fades in, once. */
+  [data-reveal="waiting"]:not(.step-title) {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  [data-reveal="shown"]:not(.step-title) {
+    animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--d, 0) * 1ms);
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* ── The four steps. On large screens one panel stays beside the text
+     (sticky) and the figure turns in it; on small ones each step has its
+     own blue card above its text. */
+  .story-stage {
     display: none;
   }
-  .ledger-right .ledger-roll {
-    mask-image: linear-gradient(90deg, transparent 5%, #000 55%);
+  .step-block {
+    display: grid;
+    gap: 1.75rem;
+    padding-block: 3rem;
   }
-  @media (min-width: 768px) {
-    .ledger-right {
+  .step-card {
+    height: min(58svh, 28rem);
+    border-radius: 22px;
+    background:
+      radial-gradient(70% 60% at 50% 45%, oklch(55% 0.235 268 / 0.7), transparent 75%),
+      var(--color-ultramarine);
+  }
+  @media (min-width: 1024px) {
+    .story-stage {
       display: block;
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      pointer-events: none;
+    }
+    .story-steps {
+      position: relative;
+      z-index: 10;
+      margin-top: -100svh;
+    }
+    .step-block {
+      min-height: 100svh;
+      grid-template-columns: minmax(0, 30rem) 1fr;
+      align-items: center;
+      gap: 4rem;
+      padding-block: 6.5rem 3rem;
+    }
+    .step-card {
+      display: none;
     }
   }
-  .ledger-roll p::before {
-    content: attr(data-l);
+  /* The panel bleeds to a margin of the screen's right edge. */
+  .stage-col {
+    position: relative;
+    margin-right: calc(-2rem - max(0px, (100vw - 80rem) / 2) + 1.25rem);
+  }
+  .stage-panel {
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background:
+      radial-gradient(64% 54% at 52% 46%, oklch(55% 0.235 268 / 0.75), transparent 75%),
+      var(--color-ultramarine);
+  }
+  /* Where the reader is: the four steps, the current one in lime. */
+  /* Clear of the support chat's bubble on narrow panels: they wrap first. */
+  .stage-chips {
+    position: absolute;
+    left: 1.5rem;
+    right: 4.5rem;
+    bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    pointer-events: auto;
+  }
+  .stage-chips a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.125rem;
+    border-radius: 999px;
+    border: 1px solid oklch(100% 0 0 / 0.3);
+    padding-inline: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--color-on-blue);
+    transition:
+      background-color 250ms ease,
+      color 250ms ease,
+      border-color 250ms ease;
+  }
+  .stage-chips a span {
+    opacity: 0.75;
+  }
+  .stage-chips a:hover {
+    border-color: oklch(100% 0 0 / 0.6);
+    color: oklch(100% 0 0);
+  }
+  .stage-chips a:focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+  }
+  .stage-col[data-active="read"] a[data-chip="read"],
+  .stage-col[data-active="catch"] a[data-chip="catch"],
+  .stage-col[data-active="fix"] a[data-chip="fix"],
+  .stage-col[data-active="watch"] a[data-chip="watch"] {
+    border-color: var(--color-lime);
+    background: var(--color-lime);
+    color: var(--color-navy);
   }
 
-  /* A paper ground for plain reading (the questions): the tokens turn dark on
-     bone, so the same utilities read on it. Contrast on #f1ebdf: fg 13:1,
-     muted 7.4:1, subtle 5.5:1, molten 5.5:1, verdigris-soft 5.6:1, and
-     verdigris 4.1:1 (icons only). */
-  .ground-bone {
-    --color-fg: #10282c;
-    --color-fg-muted: #364f4f;
-    --color-fg-subtle: #4a6262;
-    --color-border: rgb(16 40 44 / 0.16);
-    --color-molten-bright: #a8380a;
-    --color-verdigris: #2a7d71;
-    --color-verdigris-soft: #1c675d;
-    background-color: var(--color-bone);
+  .step-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
     color: var(--color-fg);
+  }
+  .step-num {
+    display: inline-grid;
+    place-items: center;
+    height: 1.625rem;
+    min-width: 2.25rem;
+    border-radius: 999px;
+    padding-inline: 0.5rem;
+    background: var(--color-lime);
+    color: var(--color-navy);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .step-title {
+    --title-tracking: -0.02em;
+    margin-top: 1.25rem;
+    font-size: clamp(2.35rem, 4.1vw, 3.5rem);
+    line-height: 1.03;
+    text-wrap: balance;
+    color: var(--color-fg);
+  }
+  .step-body {
+    margin-top: 1.5rem;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--color-fg-muted);
+  }
+  @media (min-width: 768px) {
+    .step-body {
+      font-size: 1.125rem;
+    }
+  }
+  /* The step's readout: it says what the figure is doing, in the same words. */
+  .readout {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 1.75rem;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--color-ultramarine);
+  }
+  .readout-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--color-lime);
+    box-shadow: 0 0 0 3px oklch(91.1% 0.195 118 / 0.35);
+  }
+  .chip {
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    padding: 0.3125rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-fg-muted);
+  }
+  /* The product's own surfaces (a check, a patch, a plan): white on the paper. */
+  .ui-card {
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: 0 14px 28px -24px oklch(23.2% 0.073 267 / 0.45);
+  }
+  .diff-del {
+    display: block;
+    margin-inline: -1.25rem;
+    padding-inline: 1.25rem;
+    background: oklch(91.1% 0.195 118 / 0.5);
+    color: var(--color-navy);
+    font-weight: 600;
+  }
+  .points li {
+    display: grid;
+    gap: 0.25rem;
+    border-top: 1px solid var(--color-border);
+    padding-block: 0.625rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--color-fg-muted);
+  }
+  .points li > span {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--color-fg);
+  }
+  @media (min-width: 640px) {
+    .points li {
+      grid-template-columns: 9.5rem 1fr;
+      gap: 1rem;
+    }
+  }
+  .plan {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem 1.25rem;
+  }
+
+  /* ── Buttons and the URL field ── */
+  .btn-lime {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.75rem;
+    border-radius: 999px;
+    padding-inline: 1.25rem;
+    background: var(--color-lime);
+    color: var(--color-navy);
+    font-size: 15px;
+    font-weight: 600;
+    transition:
+      background-color 200ms ease,
+      transform 150ms ease;
+  }
+  .btn-lime:hover {
+    background: oklch(93.7% 0.147 117.1);
+  }
+  .btn-lime:active {
+    transform: translateY(1px);
+  }
+  .url-field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 3.5rem;
+    border-radius: 999px;
+    background: oklch(100% 0 0);
+    padding: 0.375rem 0.375rem 0.375rem 1.5rem;
+    box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.5);
+    transition: box-shadow 200ms ease;
+  }
+  .url-field:focus-within {
+    box-shadow: 0 0 0 3px var(--color-lime);
+  }
+
+  /* ── The real report ── */
+  .report-card {
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: 0 24px 48px -36px oklch(23.2% 0.073 267 / 0.5);
+  }
+  .report-score {
+    position: relative;
+    display: grid;
+    width: 5.5rem;
+    height: 5.5rem;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 999px;
+    background: conic-gradient(var(--color-ultramarine) calc(var(--score) * 1%), var(--color-paper-deep) 0);
+  }
+  .report-score::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: inherit;
+    background: var(--color-surface);
+  }
+  .report-score > * {
+    position: relative;
+  }
+  .report-score-sm {
+    width: 2.875rem;
+    height: 2.875rem;
+  }
+  .report-score-sm::before {
+    inset: 4px;
+  }
+  /* The real report's score, pinned in the hero's free corner (desktop). */
+  .hero-proof {
+    display: none;
+  }
+  @media (min-width: 1280px) {
+    .hero-proof {
+      position: absolute;
+      z-index: 10;
+      top: 6.5rem;
+      right: max(2rem, calc((100vw - 80rem) / 2 + 2rem));
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      border-radius: 14px;
+      background: oklch(100% 0 0);
+      padding: 0.625rem 1.125rem 0.625rem 0.625rem;
+      --color-surface: oklch(100% 0 0);
+      box-shadow: 0 18px 40px -26px oklch(23.2% 0.073 267 / 0.7);
+      transition: box-shadow 200ms ease;
+    }
+    .hero-proof:hover {
+      box-shadow:
+        0 0 0 2px var(--color-lime),
+        0 18px 40px -26px oklch(23.2% 0.073 267 / 0.7);
+    }
+  }
+  .impact {
+    border-radius: 999px;
+    padding: 0.125rem 0.625rem;
+    font-size: 12px;
+  }
+  .impact-medium {
+    background: oklch(55.5% 0.146 49 / 0.12);
+    color: var(--color-amber);
+  }
+  .impact-low {
+    background: var(--color-paper-deep);
+    color: var(--color-fg-muted);
+  }
+
+  /* ── The last call, on the blue ── */
+  .cta-band {
+    background: var(--color-ultramarine);
+  }
+  .cta-title {
+    --title-tracking: -0.025em;
+    font-size: clamp(2.4rem, 5vw, 4.4rem);
+    line-height: 1;
+    text-wrap: balance;
+    color: oklch(100% 0 0);
+  }
+
+  .footer-ember {
+    background: radial-gradient(40% 70% at 50% 100%, oklch(48.1% 0.247 267 / 0.12), transparent 75%);
   }
 
   .forge-ui .lg,
-  .forge-ui .lg-thin {
-    background: rgb(6 36 42 / 0.86);
+  .forge-ui .lg-thin,
+  .forge-ui ~ .support-chat .lg,
+  .forge-ui ~ .support-chat .lg-thin {
+    background: var(--color-surface);
     backdrop-filter: none;
     box-shadow: inset 0 0 0 1px var(--color-border);
   }
   .forge-ui .lg::before,
-  .forge-ui .lg::after {
+  .forge-ui .lg::after,
+  .forge-ui ~ .support-chat .lg::before,
+  .forge-ui ~ .support-chat .lg::after {
     content: none;
   }
-  .forge-ui .lg-molten {
-    background: var(--color-molten);
-    color: var(--color-ink);
+  .forge-ui .lg-molten,
+  .forge-ui ~ .support-chat .lg-molten {
+    background: var(--color-lime);
+    color: var(--color-navy);
     box-shadow: none;
   }
-  .forge-ui .lg-chip {
+  .forge-ui .lg-chip,
+  .forge-ui ~ .support-chat .lg-chip {
     backdrop-filter: none;
     box-shadow: none;
   }
-
-  /* ── Homepage chapters ──────────────────────────────────────────────
-     The text of a chapter waits for its sculpture, then is read in once,
-     left to right like the crawler's scan line in the video. Nothing
-     replays on the way back up: the attribute never returns to waiting. */
-  .chapter[data-chapter="waiting"] [data-reveal] {
-    opacity: 0;
-    clip-path: inset(0 100% 0 0);
-  }
-  .chapter[data-chapter="revealed"] [data-reveal] {
-    animation: read-in 0.9s var(--ease-out-expo) both;
-    animation-delay: calc(var(--d, 0) * 1ms);
-  }
-  @keyframes read-in {
-    from {
-      opacity: 0;
-      clip-path: inset(0 100% 0 0);
-    }
-    25% {
-      opacity: 1;
-    }
-    to {
-      opacity: 1;
-      clip-path: inset(0 0 0 0);
-    }
+  /* Bone panels on the inner pages were paper on petrol: now white cards. */
+  .panel-bone {
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-fg);
   }
 
   .container-rf {
@@ -559,30 +905,34 @@
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    /* No delays either: headline letters would otherwise pop in one by one. */
+    animation-delay: 0ms !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
 }
 
 /* Marketing headings: Fraunces display serif (docs/DESIGN.md "Typographie").
    Unlayered on purpose so it wins over the font-semibold / tracking-tight
-   utilities already on those headings. */
+   utilities already on those headings. A heading sets its own tracking and
+   the colour of its second voice through --title-tracking and --title-em. */
 .marketing h1,
 .marketing h2 {
   font-family: var(--font-display);
   font-weight: 500;
   font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--title-tracking, -0.01em);
 }
-/* The second voice of a title: Fraunces italic, soft and a little wonky, in verdigris. */
+/* The second voice of a title: Fraunces italic, soft and a little wonky. */
 .marketing h1 em,
 .marketing h2 em {
   font-style: italic;
   font-weight: 400;
   font-variation-settings: "opsz" 144, "SOFT" 60, "WONK" 1;
-  color: var(--color-verdigris-soft);
+  color: var(--title-em, var(--color-verdigris-soft));
 }
-/* The marketing surface paints the page itself; keep overscroll the same petrol. */
+/* The marketing surface paints the page itself; keep overscroll the same paper. */
 body:has(.forge-ui) {
-  background-color: #041b1f;
+  background-color: #f3f5fb;
 }

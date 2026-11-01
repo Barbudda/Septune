@@ -1,38 +1,65 @@
-import type { ForgeSlot } from "./engine";
+import { FIGURE, SITE_TIERS, TREE_PAGES } from "./structures";
+import { PRICING_TIERS } from "@/lib/pricing";
 
-export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-export const smooth = (a: number, b: number, v: number) => {
-  const t = clamp01((v - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
+/** The homepage steps that have a figure, in page order. */
+export const STEPS = ["hero", "read", "catch", "fix", "watch"] as const;
+export type Step = (typeof STEPS)[number];
 
 export type Scene = {
-  /** Structure id, see structures.ts: 0 tree, 1 stream, 2 code, 3 sites. */
   sid: number;
-  /** The chapter's state from its own progress (progressOf in chapters.ts). */
-  state: (p: number) => ForgeSlot["state"];
-  rotY: (p: number) => number;
+  /** Seconds its story plays once the figure has formed; 0 when it has none. */
+  story: number;
+  /** The figure's state (st.x in the shaders) at a point s (0 -> 1) of its story. */
+  state: (s: number) => number;
+  /** A fixed three-quarter view: the scroll never turns the figure. */
+  rotY: number;
   rotX: number;
 };
 
-/** Which plan the sites picture shows at a point of the start chapter: 0 free, 1 pro, 2 studio. */
-export const tierAt = (p: number) => (p < 0.3 ? 0 : p < 0.62 ? 1 : 2);
+const tierAt = (s: number) => (s < 0.34 ? 0 : s < 0.67 ? 1 : 2);
 
 /**
- * What each chapter shows, keyed by the chapter's id. Every picture says
- * what its text says, and moves with the scroll while the chapter is read.
- * The captions under the pictures read the same states (readouts.ts).
+ * What each step shows. A step's story plays once, on a clock, after its
+ * figure has formed; scrolling back shows it where it stopped (Hugo,
+ * 2026-10-31: replaying is friction).
  */
-export const SCENES: Record<string, Scene> = {
-  // A site as a crawler reads it, rising from the horizon, turning slowly.
-  top: { sid: 0, state: () => [-1, 0, 0, 0], rotY: (p) => 0.15 + p * 0.5, rotX: -0.04 },
-  // The crawl: a molten front runs from the home page out to the last pages as the chapter is read.
-  features: { sid: 0, state: (p) => [-0.1 + p * 1.3, 0, 0, 0], rotY: (p) => 0.35 + p * 0.55, rotX: 0.1 },
-  // Deploys through three checkpoints; the pull-request gate heats up as the defect piles on it.
-  "how-it-works": { sid: 1, state: (p) => [smooth(0, 0.45, p), 0, 0, 0], rotY: (p) => -0.42 + p * 0.12, rotX: 0.06 },
-  // The file: the noindex line lifts out, the lines close up and turn green.
-  fix: { sid: 2, state: (p) => [smooth(0.08, 0.8, p), 0, 0, 0], rotY: (p) => -0.32 + p * 0.22, rotX: 0.04 },
-  // Sites watched: 1, then 5, then 25 as the plans go by.
-  start: { sid: 3, state: (p) => [[0.02, 0.3, 1.01][tierAt(p)]!, 0, 0, 0], rotY: (p) => 0.2 - p * 0.35, rotX: -0.12 },
+export const SCENES: Record<Step, Scene> = {
+  // A site's pages around the globe, turning; a scan ring sweeps them.
+  hero: { sid: FIGURE.globe, story: 0, state: () => 0, rotY: 0, rotX: 0.3 },
+  // septune.dev's own 93 pages, read from the home page down.
+  read: { sid: FIGURE.tree, story: 6.5, state: (s) => -0.03 + s * 1.08, rotY: -0.1, rotX: 0.05 },
+  // Pages fall through the check; the one that would leave Google lands on it and stays.
+  catch: { sid: FIGURE.gate, story: 3.2, state: (s) => s, rotY: 0.16, rotX: 0.03 },
+  // The noindex line slides out of the file, the file closes up.
+  fix: { sid: FIGURE.code, story: 3.4, state: (s) => s, rotY: -0.14, rotX: 0.04 },
+  // 1, then 5, then 25 sites light up: the three plans.
+  watch: { sid: FIGURE.sites, story: 5, state: (s) => SITE_TIERS[tierAt(s)]!, rotY: 0.2, rotX: -0.12 },
 };
-export const FALLBACK: Scene = SCENES.top!;
+
+/** The tree's crawl order per page, as structures.ts lays it out: home, 16 linked pages, 76 deeper. */
+const treeOrder = (i: number) => (i === 0 ? 0 : i <= 16 ? 0.04 + ((i - 1) / 16) * 0.16 : 0.24 + ((i - 17) / 76) * 0.76);
+
+/**
+ * What the step's readout says at a point of its story. It reads the same
+ * state as the particles, so the words and the figure never disagree; the
+ * server HTML carries the end state (s = 1).
+ */
+export const READOUTS: Partial<Record<Step, (s: number) => string>> = {
+  read: (s) => {
+    const front = SCENES.read.state(s);
+    let n = 0;
+    for (let i = 0; i < TREE_PAGES; i++) if (treeOrder(i) <= front) n++;
+    if (n === 0) return "the crawl starts at the home page";
+    return n >= TREE_PAGES ? `${TREE_PAGES} pages read in 8 seconds` : `${n} of ${TREE_PAGES} pages read`;
+  },
+  catch: (s) => (s < 0.55 ? "comparing the preview with production" : "1 critical change: /pricing became noindex"),
+  fix: (s) => (s < 0.45 ? "the patch removes 1 line" : s < 0.85 ? "the lines below move up" : "/pricing can be indexed again"),
+  watch: (s) => {
+    const tier = PRICING_TIERS[tierAt(s)];
+    if (!tier) return "";
+    const { sites, frequency } = tier.limits;
+    return `${tier.name}: ${sites} ${sites === 1 ? "site" : "sites"}, checked ${frequency}`;
+  },
+};
+
+export const finalReadout = (step: Step) => READOUTS[step]?.(1) ?? "";

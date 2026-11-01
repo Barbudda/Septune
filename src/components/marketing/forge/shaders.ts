@@ -1,8 +1,14 @@
 /**
- * GLSL for the forge field: a GPU particle cloud that takes the shape of
- * what each homepage chapter says (structures.ts), keeps flowing along it,
- * and is stirred by a small fluid simulation driven by the cursor. Compiled
- * by three's ShaderMaterial (WebGL2), which maps texture2D / gl_FragColor.
+ * GLSL for the forge field: a GPU particle cloud that draws the figure of
+ * the step being read (structures.ts) and turns from one figure into the
+ * next on a clock. Compiled by three's ShaderMaterial (WebGL2), which maps
+ * texture2D / gl_FragColor.
+ *
+ * Light on the blue stage: the points add up their colour weighted by their
+ * coverage, the tone pass divides it back out and rolls the coverage off, and
+ * writes premultiplied colour the canvas composites over the page. It also
+ * masks the picture to the stage regions, so nothing is ever drawn on the
+ * page's paper or under its text.
  */
 
 /** Full-screen pass: every simulation step renders one quad. */
@@ -19,22 +25,39 @@ varying vec2 vUv;
 void main() { gl_FragColor = texture2D(uSource, vUv); }`;
 
 /**
- * The points are summed in a half-float buffer, then rolled off: where
- * hundreds stack (a node, a joint) the light saturates softly instead of
- * clipping. The canvas is blended onto the page with mix-blend-mode: screen,
- * so this writes light only, never a background.
+ * acc.rgb is the sum of colour x coverage, acc.a the sum of coverage: their
+ * ratio is the exact palette colour, and 1 - exp(-a) turns piled-up points
+ * into solid light instead of clipping. Outside every region nothing is kept.
  */
 export const TONE_FRAG = /* glsl */ `
 uniform sampler2D uTex;
 uniform float uExposure;
+uniform vec2 uView;
+uniform vec4 uRect[4];
+uniform float uRadius[4];
+uniform int uCount;
 varying vec2 vUv;
+float roundRect(vec2 p, vec4 r, float rad) {
+  vec2 centre = (r.xy + r.zw) * 0.5;
+  vec2 halfSize = (r.zw - r.xy) * 0.5;
+  vec2 q = abs(p - centre) - halfSize + rad;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rad;
+}
 void main() {
-  vec3 c = texture2D(uTex, vUv).rgb;
-  gl_FragColor = vec4(1.0 - exp(-c * uExposure), 1.0);
+  vec4 acc = texture2D(uTex, vUv);
+  float a = 1.0 - exp(-acc.a * uExposure);
+  vec3 c = acc.rgb / max(acc.a, 1e-4);
+  vec2 px = vec2(vUv.x * uView.x, (1.0 - vUv.y) * uView.y);
+  float m = 0.0;
+  for (int i = 0; i < 4; i++) {
+    if (i >= uCount) break;
+    m = max(m, clamp(0.5 - roundRect(px, uRect[i], uRadius[i]), 0.0, 1.0));
+  }
+  a *= m;
+  gl_FragColor = vec4(c * a, a);
 }`;
 
-// Curl of a sine-sum potential: divergence-free drift, so the cloud swirls
-// instead of clumping.
+// Curl of a sine-sum potential: divergence-free drift for particles in transit.
 const CURL = /* glsl */ `
 vec3 potential(vec3 p, float t) {
   return vec3(
@@ -54,43 +77,56 @@ vec3 curlNoise(vec3 p, float t) {
 `;
 
 /**
- * Where a particle belongs right now in a structure (records a, b, c, see
+ * Where a particle belongs right now in a figure (records a, b, c, see
  * structures.ts), and how far along its segment it is (f). Shared by the
- * simulation and the point shader so both agree on the flow.
- * kinds: 0 flow, 1 node, 2 dust, 3 defect, 5 flow that moves up when the fix closes the gap.
- * sid: 0 tree, 1 stream, 2 code, 3 sites. st.x is the chapter's own progress.
+ * simulation and the point shader so both agree.
+ * Kinds as KIND in structures.ts. sid: 0 globe, 1 tree, 2 gate, 3 code,
+ * 4 sites. st.x is the step's own story, played by a clock (0 -> 1).
  */
 const HOME = /* glsl */ `
+bool is(float kind, float k) { return abs(kind - k) < 0.5; }
+// The height of the globe's scan ring on the unit sphere: a slow sweep pole to pole.
+float scanHeight(float t) { return sin(t * 0.3) * 0.9; }
 vec3 homeOf(vec4 a, vec4 b, vec4 c, float sid, vec4 st, vec4 rnd, float t, out float f) {
   float kind = c.y;
   vec3 p = a.xyz;
   f = 0.5;
   if (a.w > 0.0) {
     f = fract(b.w + t * a.w);
-    // Stream: pages that would leave Google pile up at the pull request.
-    if (kind > 2.5 && kind < 3.5 && sid > 0.5 && sid < 1.5) f = min(1.0, f * 1.35);
     p = mix(a.xyz, b.xyz, f);
   }
-  if (kind > 1.5 && kind < 2.5) {
-    p += 0.14 * vec3(sin(t * 0.31 + rnd.x * 6.28), cos(t * 0.27 + rnd.y * 6.28), sin(t * 0.23 + rnd.z * 6.28));
-  } else if (a.w == 0.0) {
-    p += 0.008 * vec3(sin(t * 1.3 + rnd.x * 6.28), cos(t * 1.1 + rnd.y * 6.28), sin(t * 0.9 + rnd.z * 6.28));
+  if (sid < 0.5) {
+    if (is(kind, 7.0)) {
+      float h = scanHeight(t);
+      float rr = sqrt(max(0.0, 1.0 - h * h));
+      p = vec3(a.x * rr, h, a.z * rr) * c.w;
+    }
+    // About ninety seconds a turn.
+    float ang = t * 0.07;
+    float cs = cos(ang), sn = sin(ang);
+    p = vec3(cs * p.x + sn * p.z, p.y, -sn * p.x + cs * p.z);
+  } else if (sid > 1.5 && sid < 2.5) {
+    // The held page comes down onto the check.
+    if (is(kind, 8.0)) p.y += 1.7 * (1.0 - smoothstep(0.0, 0.55, st.x));
+  } else if (sid > 2.5 && sid < 3.5) {
+    // The noindex line slides out to the right, then the lines below close the gap.
+    if (is(kind, 3.0)) p.x += 1.6 * smoothstep(0.08, 0.5, st.x);
+    if (is(kind, 5.0)) p.y += c.w * smoothstep(0.45, 0.85, st.x);
   }
-  if (sid > 1.5 && sid < 2.5) {
-    // Code: the line that sets noindex lifts out, the lines below close the gap.
-    float lift = smoothstep(0.05, 0.6, st.x);
-    if (kind > 2.5 && kind < 3.5) p += vec3((rnd.x - 0.5) * 1.6, 0.45 + rnd.y * 0.9, (rnd.z - 0.5) * 1.2) * lift;
-    if (kind > 4.5) p.y += c.w * smoothstep(0.35, 0.8, st.x);
-  }
+  if (is(kind, 2.0)) p += 0.05 * vec3(sin(t * 0.21 + rnd.x * 6.28), cos(t * 0.17 + rnd.y * 6.28), sin(t * 0.13 + rnd.z * 6.28));
   return p;
 }
 `;
 
 /**
- * One simulation step per frame. Each particle belongs to structure 0 or 1
- * (the two chapters the scroll is between): it switches to structure 1 once
- * uMix passes its own random threshold, so one picture turns into the next a
- * few particles at a time, both ways, following the scroll.
+ * One simulation step per frame. Each particle has its two homes, one in the
+ * figure on screen and one in the figure coming; uMix (a clock, 0 -> 1) moves
+ * it from the first to the second over its own part of the transition,
+ * ordered from the top of the new figure down (a little left to right, a
+ * little at random), so the old figure clears and the new one draws itself
+ * in one sweep, in place. Paths are straight with a faint wobble: no cloud.
+ * It then follows its home with a fixed time constant, whatever the frame
+ * rate; the point shader keeps it nearly invisible until it has landed.
  */
 export const SIM_FRAG = /* glsl */ `
 uniform sampler2D uPos;
@@ -107,56 +143,48 @@ uniform vec4 uSt0;
 uniform vec4 uSt1;
 uniform float uMix;
 uniform float uTime;
-uniform float uHZ;
-uniform float uMotion;     // 0 when the visitor asked for reduced motion
-uniform float uStrength;   // how hard the fluid pushes
-uniform sampler2D uVel;
-uniform sampler2D uDye;
-uniform mat4 uProj;        // projection * view
-uniform mat4 uModel;       // structure group, world matrix
-uniform mat3 uInvModel;    // world direction -> structure space
-uniform vec2 uFlowScale;   // world units per fluid texel, x and y
+uniform float uDt;
+uniform float uSnap;      // 1: land on the homes at once (reduced motion)
+uniform vec4 uSpan;       // the coming figure: left edge, width, bottom edge, height
 varying vec2 vUv;
 ${CURL}
 ${HOME}
+const float SPREAD = 0.34;
 void main() {
   vec4 rnd = texture2D(uRandom, vUv);
-  bool one = rnd.w < uMix;
-  vec4 a = one ? texture2D(uA1, vUv) : texture2D(uA0, vUv);
-  vec4 b = one ? texture2D(uB1, vUv) : texture2D(uB0, vUv);
-  vec4 c = one ? texture2D(uC1, vUv) : texture2D(uC0, vUv);
-  float f;
-  vec3 home = homeOf(a, b, c, one ? uSid1 : uSid0, one ? uSt1 : uSt0, rnd, uTime, f);
+  vec4 a0 = texture2D(uA0, vUv);
+  vec4 a1 = texture2D(uA1, vUv);
+  float f0, f1;
+  vec3 h0 = homeOf(a0, texture2D(uB0, vUv), texture2D(uC0, vUv), uSid0, uSt0, rnd, uTime, f0);
+  vec3 h1 = homeOf(a1, texture2D(uB1, vUv), texture2D(uC1, vUv), uSid1, uSt1, rnd, uTime, f1);
+  float xn = clamp((h1.x - uSpan.x) / max(uSpan.y, 1e-3), 0.0, 1.0);
+  float yn = clamp((h1.y - uSpan.z) / max(uSpan.w, 1e-3), 0.0, 1.0);
+  float order = (1.0 - yn) * 0.62 + xn * 0.2 + rnd.w * 0.18;
+  float t0 = order * (1.0 - SPREAD);
+  float k = smoothstep(t0, t0 + SPREAD, uMix);
+  vec3 home = mix(h0, h1, k);
+  vec3 drift = normalize(curlNoise(home * 1.3 + rnd.xyz * 4.0, uTime * 0.2) + 1e-5);
+  home += sin(k * 3.14159265) * drift * 0.025;
 
   vec3 pos = texture2D(uPos, vUv).xyz;
-  // A flow that wraps from the end of its segment back to the start jumps
-  // there instead of travelling back across the picture (it is faded out
-  // at both ends by the point shader).
-  if (a.w > 0.0 && f < 0.012) pos = home;
-
-  vec3 to = home - pos;
-  float travel = length(to);
-  pos += to / max(travel, 1e-5) * min(travel * 0.1, 0.045) * uHZ;
-  // On a long trip each particle drifts on its own noise: the change reads
-  // as dust resettling, not as particles queuing on the same path.
-  vec3 dust = normalize(curlNoise(pos * 2.3 + rnd.xyz * 6.0, uTime * 0.3) + 1e-5);
-  pos += dust * 0.006 * smoothstep(0.05, 0.5, travel) * uHZ * uMotion;
-
-  // The fluid only pushes where the cursor has been (dye mask).
-  vec4 clip = uProj * (uModel * vec4(pos, 1.0));
-  vec2 suv = clip.xy / clip.w * 0.5 + 0.5;
-  if (uMotion > 0.5 && suv.x > 0.0 && suv.x < 1.0 && suv.y > 0.0 && suv.y < 1.0) {
-    vec2 vel = texture2D(uVel, suv).xy;
-    float dye = texture2D(uDye, suv).r;
-    vec3 push = uInvModel * vec3(vel * uFlowScale, 0.0);
-    pos += push * (1.0 / 60.0) * uHZ * uStrength * min(dye, 1.0);
-  }
-
-  if (length(pos) > 8.0) pos = home;
-  gl_FragColor = vec4(pos, travel);
+  // A flow wrapping back to the start of its segment jumps there: it is faded out at both ends.
+  bool flowing = (k < 0.5 ? a0.w : a1.w) > 0.0;
+  if (flowing && (k < 0.5 ? f0 : f1) < 0.01) pos = home;
+  // Unhurried between two figures; close behind its home the rest of the
+  // time, so a page that slides or falls in a story stays sharp.
+  float tau = (k > 0.001 && k < 0.999) ? 0.24 : 0.07;
+  pos += (home - pos) * (1.0 - exp(-uDt / tau));
+  if (uSnap > 0.5 || length(pos) > 14.0) pos = home;
+  gl_FragColor = vec4(pos, k);
 }`;
 
-/** Each point reads its position from the simulation and its colour from what it stands for. */
+/**
+ * Each point reads its place from the simulation and its colour from what
+ * it stands for in each of the two figures, mixed by its own progress.
+ * Two tones on the blue, near-white and pale blue; the accent only where the
+ * sentence puts the attention (the crawl front, the held page, the noindex
+ * line, the check sweeping the watched sites, the globe's scan).
+ */
 export const POINTS_VERT = /* glsl */ `
 uniform sampler2D uPos;
 uniform sampler2D uA0;
@@ -169,202 +197,117 @@ uniform float uSid0;
 uniform float uSid1;
 uniform vec4 uSt0;
 uniform vec4 uSt1;
-uniform float uMix;
 uniform float uTime;
 uniform float uSize;
 uniform float uDPR;
+uniform float uOpacity;
 attribute vec2 ref;
 attribute vec4 rnd;
-varying vec3 vCol;
+varying vec4 vCol;
 ${HOME}
-const vec3 BONE = vec3(0.95, 0.92, 0.86);
-const vec3 VERD = vec3(0.33, 0.8, 0.71);
-const vec3 MOLT = vec3(1.0, 0.42, 0.17);
-void main() {
-  vec4 state = texture2D(uPos, ref);
-  bool one = rnd.w < uMix;
-  vec4 a = one ? texture2D(uA1, ref) : texture2D(uA0, ref);
-  vec4 b = one ? texture2D(uB1, ref) : texture2D(uB0, ref);
-  vec4 c = one ? texture2D(uC1, ref) : texture2D(uC0, ref);
-  float sid = one ? uSid1 : uSid0;
-  vec4 st = one ? uSt1 : uSt0;
+const vec3 INK = vec3(0.949, 0.961, 1.0);
+const vec3 SOFT = vec3(0.659, 0.729, 1.0);
+const vec3 ACCENT = vec3(0.843, 0.949, 0.235);
+
+vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
   float f;
-  homeOf(a, b, c, sid, st, rnd, uTime, f);
+  p = homeOf(a, b, c, sid, st, rnd, uTime, f);
   float kind = c.y;
   float order = c.x;
-
-  // Two dominant tones in the particles themselves, bone and verdigris.
-  vec3 col = mix(BONE, VERD, smoothstep(0.35, 0.8, rnd.x));
-  float bright = (kind > 0.5 && kind < 1.5) ? 1.0 : 0.62;
-  if (kind > 1.5 && kind < 2.5) bright = 0.3;
-  // A few molten packets ride every flow: the crawler at work.
-  bool packet = kind < 0.5 && rnd.z > 0.968;
-  if (packet) { col = MOLT; bright = 2.2; }
-
+  vec3 col = INK;
+  float w = 1.0;
+  if (is(kind, 1.0)) { col = SOFT; w = 0.62; }
+  else if (is(kind, 6.0)) { w = 1.15; }
+  else if (is(kind, 2.0)) { col = SOFT; w = 0.2; }
   if (sid < 0.5) {
-    // Tree: the crawl front. Pages behind it are read (greener, brighter), ahead still dim.
-    if (st.x > -0.5) {
-      float band = exp(-pow((order - st.x) / 0.045, 2.0));
-      float done = step(order, st.x);
-      col = mix(col, VERD, done * 0.6);
-      bright *= mix(0.5, 1.15, done);
-      col = mix(col, MOLT, band);
-      bright += band * 0.9;
+    // Globe: the far side fades; the ring is the accent and lights the cards it passes.
+    float face = smoothstep(-1.7, 1.5, p.z);
+    w *= mix(0.22, 1.0, face);
+    if (is(kind, 7.0)) {
+      col = ACCENT;
+      w = 1.4 * mix(0.25, 1.0, face);
+    } else if (!is(kind, 2.0)) {
+      float band = exp(-pow((c.w - scanHeight(uTime)) / 0.08, 2.0));
+      col = mix(col, ACCENT, band * 0.7);
+      w *= 1.0 + band * 0.8;
     }
   } else if (sid < 1.5) {
-    if (kind > 2.5 && kind < 3.5) { col = MOLT; bright = 1.25; }
-    if (c.w > 0.5) { col = mix(BONE, MOLT, 0.3 + 0.7 * st.x); bright = 1.25; }
+    // Tree: pages ahead of the crawl are faint, read pages bright, the front in the accent.
+    if (!is(kind, 2.0)) {
+      float read = step(order, st.x);
+      float front = exp(-pow((order - st.x) / 0.035, 2.0)) * step(0.0, st.x) * (1.0 - step(1.02, st.x));
+      col = mix(SOFT, col, read);
+      w *= mix(0.3, 1.0, read);
+      col = mix(col, ACCENT, front);
+      w *= 1.0 + front * 1.2;
+    }
   } else if (sid < 2.5) {
-    // Code: tokens in two tones (c.x), like highlighted source.
-    if (kind < 1.5 || kind > 4.5) col = order > 0.62 ? VERD : order < 0.2 ? BONE * 0.6 : BONE;
-    if (kind > 2.5 && kind < 3.5) { col = MOLT; bright = 1.25 * (1.0 - smoothstep(0.35, 0.7, st.x)); }
-    else if (kind < 1.5 || kind > 4.5) col = mix(col, VERD, smoothstep(0.7, 1.0, st.x) * 0.7);
+    if (is(kind, 4.0)) {
+      // Falling pages fade in at the top and out at the bottom.
+      w *= smoothstep(0.0, 0.12, f) * (1.0 - smoothstep(0.86, 1.0, f));
+      if (order > 0.25) { col = SOFT; w *= 0.7; }
+    } else if (is(kind, 8.0)) {
+      col = ACCENT;
+      w *= order > 0.25 ? 1.3 : 1.9;
+    } else if (is(kind, 9.0)) {
+      // The check turns to the accent under the page it stops, once the page has landed.
+      float hit = smoothstep(0.5, 0.65, st.x) * (1.0 - smoothstep(0.46, 0.8, abs(c.w)));
+      col = mix(INK, ACCENT, hit);
+      w *= 1.0 + hit * 0.7;
+    }
+  } else if (sid < 3.5) {
+    // Code: two tones by token; the noindex line is the accent and fades as it leaves.
+    if (is(kind, 0.0) || is(kind, 5.0)) {
+      if (order > 1.5 && order < 2.5) { col = SOFT; w *= 0.6; }
+      else if (order < 0.5) col = SOFT;
+    }
+    if (is(kind, 3.0)) {
+      col = ACCENT;
+      w *= 1.5 * (1.0 - smoothstep(0.3, 0.55, st.x));
+    }
   } else {
-    // Sites: as many light up as the plan watches.
-    float lit = step(order, st.x);
-    col = mix(BONE * 0.7, VERD, lit);
-    bright *= mix(0.28, 1.15, lit);
+    // Sites: the plan's sites lit, the others faint; a check sweeps across the lit ones.
+    if (!is(kind, 2.0)) {
+      float lit = step(order, st.x);
+      col = mix(SOFT, col, lit);
+      w *= mix(0.24, 1.0, lit);
+      float sweep = -2.4 + mod(uTime * 0.55, 5.6);
+      float band = exp(-pow((p.x - sweep) / 0.22, 2.0)) * lit;
+      col = mix(col, ACCENT, band * 0.8);
+      w *= 1.0 + band;
+    }
   }
+  return vec4(col, w);
+}
 
-  // Fade at both ends of a segment so the jump back to its start is never seen;
-  // stream defects stay lit at the gate where they pile up.
-  float ends = 1.0;
-  if (a.w > 0.0) {
-    ends = smoothstep(0.0, 0.06, f);
-    if (!(kind > 2.5 && kind < 3.5 && sid > 0.5 && sid < 1.5)) ends *= 1.0 - smoothstep(0.94, 1.0, f);
-  }
-  // Travellers between two pictures are dust; they light up once they arrive.
-  float settled = mix(1.0, 0.3, smoothstep(0.04, 0.4, state.w));
-  vCol = col * bright * ends * settled;
+void main() {
+  vec4 state = texture2D(uPos, ref);
+  vec4 c0 = texture2D(uC0, ref);
+  vec4 c1 = texture2D(uC1, ref);
+  vec3 p0, p1;
+  vec4 l0 = look(texture2D(uA0, ref), texture2D(uB0, ref), c0, uSid0, uSt0, p0);
+  vec4 l1 = look(texture2D(uA1, ref), texture2D(uB1, ref), c1, uSid1, uSt1, p1);
+  float k = state.w;
+  vec4 l = mix(l0, l1, k);
+  // A particle on its way between two figures is almost invisible: the old
+  // figure clears and the new one appears where its particles land.
+  float away = length(state.xyz - mix(p0, p1, k));
+  l.a *= mix(1.0, 0.1, smoothstep(0.015, 0.22, away)) * (1.0 - 0.3 * sin(k * 3.14159265));
+  vCol = vec4(l.rgb, l.a * uOpacity);
 
   vec4 mv = modelViewMatrix * vec4(state.xyz, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uSize * uDPR * c.z * mix(0.6, 1.0, rnd.z) * (packet ? 1.7 : 1.0) * (6.0 / -mv.z);
+  gl_PointSize = uSize * uDPR * mix(c0.z, c1.z, k) * mix(0.75, 1.0, rnd.z) * (6.0 / -mv.z);
 }`;
 
-/** Soft shaded sprite. */
+/** A small round sprite, denser at its centre. */
 export const POINTS_FRAG = /* glsl */ `
-uniform float uOpacity;
-varying vec3 vCol;
+uniform float uDensity;
+varying vec4 vCol;
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
   if (r2 > 1.0) discard;
-  vec3 n = vec3(c.x, -c.y, sqrt(1.0 - r2));
-  float light = 0.4 + 0.6 * clamp(dot(n, normalize(vec3(-0.4, 0.6, 0.7))), 0.0, 1.0);
-  gl_FragColor = vec4(vCol * light * (1.0 - 0.45 * r2) * 0.27 * uOpacity, 1.0);
-}`;
-
-// ---------------------------------------------------------------- fluid
-// A small stable-fluids solver (curl, vorticity, divergence, pressure,
-// projection, advection). Velocity is in fluid texels per second.
-
-export const SPLAT_FRAG = /* glsl */ `
-uniform sampler2D uTarget;
-uniform float uAspect;
-uniform vec3 uColor;
-uniform vec2 uA;
-uniform vec2 uB;
-uniform float uRadius;
-varying vec2 vUv;
-void main() {
-  vec2 p = vUv, a = uA, b = uB;
-  p.x *= uAspect; a.x *= uAspect; b.x *= uAspect;
-  vec2 pa = p - a, ba = b - a;
-  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
-  float d = length(pa - ba * h);
-  vec3 splat = exp(-d * d / (uRadius * uRadius)) * uColor;
-  gl_FragColor = vec4(texture2D(uTarget, vUv).xyz + splat, 1.0);
-}`;
-
-export const CURL_FRAG = /* glsl */ `
-uniform sampler2D uVelocity;
-uniform vec2 uTexel;
-varying vec2 vUv;
-void main() {
-  float L = texture2D(uVelocity, vUv - vec2(uTexel.x, 0.0)).y;
-  float R = texture2D(uVelocity, vUv + vec2(uTexel.x, 0.0)).y;
-  float T = texture2D(uVelocity, vUv + vec2(0.0, uTexel.y)).x;
-  float B = texture2D(uVelocity, vUv - vec2(0.0, uTexel.y)).x;
-  gl_FragColor = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);
-}`;
-
-export const VORTICITY_FRAG = /* glsl */ `
-uniform sampler2D uVelocity;
-uniform sampler2D uCurl;
-uniform vec2 uTexel;
-uniform float uCurlStrength;
-uniform float uDt;
-varying vec2 vUv;
-void main() {
-  float L = texture2D(uCurl, vUv - vec2(uTexel.x, 0.0)).x;
-  float R = texture2D(uCurl, vUv + vec2(uTexel.x, 0.0)).x;
-  float T = texture2D(uCurl, vUv + vec2(0.0, uTexel.y)).x;
-  float B = texture2D(uCurl, vUv - vec2(0.0, uTexel.y)).x;
-  float C = texture2D(uCurl, vUv).x;
-  vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
-  force /= length(force) + 1e-4;
-  force *= uCurlStrength * C;
-  force.y *= -1.0;
-  vec2 vel = texture2D(uVelocity, vUv).xy + force * uDt;
-  gl_FragColor = vec4(clamp(vel, -1000.0, 1000.0), 0.0, 1.0);
-}`;
-
-export const DIVERGENCE_FRAG = /* glsl */ `
-uniform sampler2D uVelocity;
-uniform vec2 uTexel;
-varying vec2 vUv;
-void main() {
-  vec2 C = texture2D(uVelocity, vUv).xy;
-  float L = vUv.x - uTexel.x < 0.0 ? -C.x : texture2D(uVelocity, vUv - vec2(uTexel.x, 0.0)).x;
-  float R = vUv.x + uTexel.x > 1.0 ? -C.x : texture2D(uVelocity, vUv + vec2(uTexel.x, 0.0)).x;
-  float T = vUv.y + uTexel.y > 1.0 ? -C.y : texture2D(uVelocity, vUv + vec2(0.0, uTexel.y)).y;
-  float B = vUv.y - uTexel.y < 0.0 ? -C.y : texture2D(uVelocity, vUv - vec2(0.0, uTexel.y)).y;
-  gl_FragColor = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
-}`;
-
-export const SCALE_FRAG = /* glsl */ `
-uniform sampler2D uSource;
-uniform float uValue;
-varying vec2 vUv;
-void main() { gl_FragColor = texture2D(uSource, vUv) * uValue; }`;
-
-export const PRESSURE_FRAG = /* glsl */ `
-uniform sampler2D uPressure;
-uniform sampler2D uDivergence;
-uniform vec2 uTexel;
-varying vec2 vUv;
-void main() {
-  float L = texture2D(uPressure, vUv - vec2(uTexel.x, 0.0)).x;
-  float R = texture2D(uPressure, vUv + vec2(uTexel.x, 0.0)).x;
-  float T = texture2D(uPressure, vUv + vec2(0.0, uTexel.y)).x;
-  float B = texture2D(uPressure, vUv - vec2(0.0, uTexel.y)).x;
-  float div = texture2D(uDivergence, vUv).x;
-  gl_FragColor = vec4((L + R + B + T - div) * 0.25, 0.0, 0.0, 1.0);
-}`;
-
-export const GRADIENT_FRAG = /* glsl */ `
-uniform sampler2D uPressure;
-uniform sampler2D uVelocity;
-uniform vec2 uTexel;
-varying vec2 vUv;
-void main() {
-  float L = texture2D(uPressure, vUv - vec2(uTexel.x, 0.0)).x;
-  float R = texture2D(uPressure, vUv + vec2(uTexel.x, 0.0)).x;
-  float T = texture2D(uPressure, vUv + vec2(0.0, uTexel.y)).x;
-  float B = texture2D(uPressure, vUv - vec2(0.0, uTexel.y)).x;
-  vec2 vel = texture2D(uVelocity, vUv).xy - vec2(R - L, T - B);
-  gl_FragColor = vec4(vel, 0.0, 1.0);
-}`;
-
-export const ADVECT_FRAG = /* glsl */ `
-uniform sampler2D uVelocity;
-uniform sampler2D uSource;
-uniform vec2 uTexel;
-uniform float uDt;
-uniform float uDissipation;
-varying vec2 vUv;
-void main() {
-  vec2 coord = vUv - uDt * texture2D(uVelocity, vUv).xy * uTexel;
-  gl_FragColor = uDissipation * texture2D(uSource, coord);
+  float d = pow(1.0 - r2, 1.6) * vCol.a * uDensity;
+  gl_FragColor = vec4(vCol.rgb * d, d);
 }`;

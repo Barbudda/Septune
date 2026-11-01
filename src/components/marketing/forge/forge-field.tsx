@@ -1,19 +1,37 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { chapters, measureChapters, progressOf, type ChapterEntry } from "./chapters";
-import type { Forge, ForgeFrame } from "./engine";
-import { clamp01, FALLBACK, SCENES } from "./scenes";
+import type { Forge, ForgeFrame, ForgeRegion } from "./engine";
+import { READOUTS, SCENES, type Step } from "./scenes";
+
+/** Seconds for one figure to become the next, whatever the scroll speed. */
+const TRANSITION = 1.8;
+/** A step takes over when its top passes this fraction of the viewport. */
+const ACTIVE_AT = 0.55;
+/** Room left around a figure inside its stage, as a fraction of the stage. */
+const INSET = 0.08;
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+type Box = ForgeFrame["box"];
+type Live = {
+  step: Step;
+  el: HTMLElement;
+  /** Elements the figure can sit in for this step; the first one displayed is used. */
+  stages: HTMLElement[];
+  readout: HTMLElement | null;
+  /** Where its story is, 0 -> 1. It only moves forward. */
+  s: number;
+};
+
 /**
- * The homepage's WebGL layer, screen-blended over the page. Every frame it
- * reads where the chapters are: the picture of the chapter on screen sits in
- * that chapter's stage box and moves with it; between two chapters it turns
- * from one picture into the next and travels from one box to the other,
- * following the scroll both ways.
+ * The homepage's WebGL layer. The scroll only chooses which step is being
+ * read; a clock plays everything else: a figure turns into the next over
+ * TRANSITION seconds, then the step's story plays once. Each figure sits in
+ * its own stage (the hero, the panel beside the text, or a card on small
+ * screens) and the canvas is masked to the stages on screen, so it never
+ * draws over the page's text or paper.
  *
  * Loaded after the page is idle so it never competes with the first paint;
  * without WebGL2 (or float targets) the page reads fine without it.
@@ -32,49 +50,144 @@ export function ForgeField() {
     const side = compact ? 128 : 256;
     const dpr = Math.min(window.devicePixelRatio || 1, compact ? 1.5 : 2);
 
-    const sceneOf = (e: ChapterEntry) => SCENES[e.el.id] ?? FALLBACK;
+    const steps: Live[] = Array.from(document.querySelectorAll<HTMLElement>("[data-forge-step]")).flatMap((el) => {
+      const step = el.dataset.forgeStep as Step;
+      if (!SCENES[step]) return [];
+      return [
+        {
+          step,
+          el,
+          stages: Array.from(document.querySelectorAll<HTMLElement>(`[data-forge-stage~="${step}"]`)),
+          readout: el.querySelector<HTMLElement>("[data-forge-readout]"),
+          s: motion ? 0 : 1,
+        },
+      ];
+    });
+    const regionEls = Array.from(document.querySelectorAll<HTMLElement>("[data-forge-region]"));
+    const panel = document.querySelector<HTMLElement>("[data-forge-panel]");
+    if (!steps.length) return;
 
-    const frame = (): ForgeFrame => {
-      measureChapters();
-      const { entries, viewport: vh } = chapters();
-      const first = entries[0];
-      const last = entries[entries.length - 1];
-      if (!first || !last) {
-        return { from: { sid: 0, state: [-1, 0, 0, 0] }, to: { sid: 0, state: [-1, 0, 0, 0] }, mix: 0, box: { cx: 0, cy: 0, w: 1, h: 1 }, rotY: 0, rotX: 0, opacity: 0 };
+    const stageBox = (live: Live): Box | null => {
+      for (const el of live.stages) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) continue;
+        return {
+          cx: r.left + r.width / 2,
+          cy: r.top + r.height / 2,
+          w: r.width * (1 - 2 * INSET),
+          h: r.height * (1 - 2 * INSET),
+        };
+      }
+      return null;
+    };
+
+    const activeIndex = (vh: number) => {
+      let i = 0;
+      steps.forEach((live, k) => {
+        if (live.el.getBoundingClientRect().top <= vh * ACTIVE_AT) i = k;
+      });
+      return i;
+    };
+
+    // Stage corners only change with the breakpoint: read once, and on resize.
+    const radii = new Map<HTMLElement, number>();
+    const readRadii = () => regionEls.forEach((el) => radii.set(el, parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0));
+    readRadii();
+    window.addEventListener("resize", readRadii);
+
+    // The figure formed on screen, the one it is turning into, and how far (0 -> 1).
+    let shown = activeIndex(window.innerHeight);
+    let target = shown;
+    let t = 1;
+    // A box jump left over when a transition is redirected; it fades out.
+    let drift = { x: 0, y: 0, w: 0, h: 0 };
+    let lastBox: Box | null = null;
+    let lastStep: Step | null = null;
+
+    // Every frame reads the page first and writes last, so the browser never
+    // has to lay the page out twice in one frame.
+    const frame = (dt: number): ForgeFrame => {
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+
+      // ---- reads
+      const want = activeIndex(vh);
+      const regions: ForgeRegion[] = [];
+      for (const el of regionEls) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.bottom <= 0 || r.top >= vh || r.right <= 0 || r.left >= vw) continue;
+        regions.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom, r: radii.get(el) ?? 0 });
       }
 
-      // The chapter coming in: the last one whose top has entered the viewport.
-      let ci = 0;
-      entries.forEach((e, i) => {
-        if (e.top < vh) ci = i;
-      });
-      const cur = entries[ci]!;
-      const prev = entries[Math.max(0, ci - 1)]!;
-      // Hand-over from the previous picture: starts as the chapter enters, done when its top is at 40 %.
-      const t = ci === 0 ? 1 : ease(clamp01((vh - cur.top) / (vh * 0.6)));
-      const a = sceneOf(prev);
-      const b = sceneOf(cur);
-      const pa = progressOf(prev.top, prev.bottom, vh);
-      const pb = progressOf(cur.top, cur.bottom, vh);
-      const ra = prev.stageRect;
-      const rb = cur.stageRect;
+      // The scroll picks the step; a new pick starts or redirects a transition.
+      let jumped = false;
+      if (want !== target) {
+        if (!motion) {
+          shown = target = want;
+          t = 1;
+        } else if (t >= 1) {
+          target = want;
+          t = 0;
+        } else if (want === shown) {
+          // Back to where it came from: play the way back from here.
+          [shown, target] = [target, shown];
+          t = 1 - t;
+        } else {
+          // Redirected half way: the figure most present becomes the start.
+          if (t >= 0.5) shown = target;
+          target = want;
+          t = 0;
+          jumped = true;
+        }
+      }
+      if (t < 1) {
+        t = Math.min(1, t + dt / TRANSITION);
+        if (t >= 1) shown = target;
+      }
 
-      // Past the last chapter (questions, footer) the field steps back.
-      const past = clamp01((vh * 0.5 - last.bottom) / (vh * 0.5));
+      // The story of the figure on screen plays once it has formed.
+      const cur = steps[target]!;
+      const scene = SCENES[cur.step];
+      if (t >= 1 && scene.story > 0 && cur.s < 1) cur.s = Math.min(1, cur.s + dt / scene.story);
+
+      const from = steps[shown]!;
+      const a = SCENES[from.step];
+      const b = scene;
+      const e = ease(t);
+      const boxA = stageBox(from) ?? lastBox;
+      const boxB = stageBox(cur) ?? boxA;
+      let box: Box = boxA && boxB
+        ? { cx: lerp(boxA.cx, boxB.cx, e), cy: lerp(boxA.cy, boxB.cy, e), w: lerp(boxA.w, boxB.w, e), h: lerp(boxA.h, boxB.h, e) }
+        : { cx: vw / 2, cy: vh / 2, w: vw * 0.5, h: vh * 0.5 };
+      if (lastBox && jumped) {
+        // A redirect would make the picture jump: keep the gap and let it fade.
+        drift = { x: lastBox.cx - box.cx, y: lastBox.cy - box.cy, w: lastBox.w - box.w, h: lastBox.h - box.h };
+      }
+      const fade = Math.exp(-dt / 0.3);
+      drift = { x: drift.x * fade, y: drift.y * fade, w: drift.w * fade, h: drift.h * fade };
+      box = { cx: box.cx + drift.x, cy: box.cy + drift.y, w: Math.max(40, box.w + drift.w), h: Math.max(40, box.h + drift.h) };
+      lastBox = box;
+
+      // ---- writes: the readouts in the text and the step marked in the panel.
+      for (const live of steps) {
+        const say = READOUTS[live.step];
+        if (!say || !live.readout) continue;
+        const text = say(live.s);
+        if (live.readout.textContent !== text) live.readout.textContent = text;
+      }
+      if (panel && lastStep !== cur.step) {
+        panel.dataset.active = cur.step;
+        lastStep = cur.step;
+      }
 
       return {
-        from: { sid: a.sid, state: a.state(pa) },
-        to: { sid: b.sid, state: b.state(pb) },
-        mix: a.sid === b.sid ? 1 : t,
-        box: {
-          cx: lerp(ra.cx, rb.cx, t),
-          cy: lerp(ra.cy, rb.cy, t),
-          w: lerp(ra.w, rb.w, t),
-          h: lerp(ra.h, rb.h, t),
-        },
-        rotY: lerp(a.rotY(pa), b.rotY(pb), t),
-        rotX: lerp(a.rotX, b.rotX, t),
-        opacity: 1 - 0.85 * past,
+        from: { sid: a.sid, state: [a.state(from.s), 0, 0, 0] },
+        to: { sid: b.sid, state: [b.state(cur.s), 0, 0, 0] },
+        mix: shown === target ? 0 : t,
+        box,
+        rotY: lerp(a.rotY, b.rotY, e),
+        rotX: lerp(a.rotX, b.rotX, e),
+        regions,
       };
     };
 
@@ -83,10 +196,10 @@ export function ForgeField() {
         .then(({ createForge }) => {
           if (disposed) return;
           try {
-            forge = createForge(canvas, { side, dpr, motion }, frame);
+            forge = createForge(canvas, { side, dpr, motion }, (dt) => frame(dt));
             canvas.dataset.ready = "true";
           } catch {
-            // No WebGL2 or no float render targets: the chapters read fine without.
+            // No WebGL2 or no float render targets: the steps read fine without.
           }
         })
         .catch(() => {});
@@ -97,17 +210,12 @@ export function ForgeField() {
 
     return () => {
       disposed = true;
+      window.removeEventListener("resize", readRadii);
       if (window.cancelIdleCallback) window.cancelIdleCallback(idle);
       else window.clearTimeout(idle);
       forge?.dispose();
     };
   }, []);
 
-  return (
-    <canvas
-      ref={ref}
-      aria-hidden
-      className="forge-canvas pointer-events-none fixed inset-0 z-[1] h-full w-full mix-blend-screen"
-    />
-  );
+  return <canvas ref={ref} aria-hidden className="forge-canvas pointer-events-none fixed inset-0 z-[1] h-full w-full" />;
 }

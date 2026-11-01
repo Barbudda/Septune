@@ -18,20 +18,36 @@ const LINK =
 /**
  * A thin monospace line over the page: the mark, three links, sign in, and
  * a round counter with the number of checks (it opens the docs that list
- * them). At the top of the page a fade is enough; once the page moves, a
- * solid petrol bar, so no line of text ever runs under the links.
+ * them). Over the homepage's blue hero it turns light and has no bar; on the
+ * paper, a fade at the top of the page, then a solid bar once the page
+ * moves, so no line of text ever runs under the links.
  */
 export function SiteNav({ checks }: { checks: number }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  // The server renders the homepage with the hero under the nav, so the first paint is already light.
+  const [overHero, setOverHero] = useState(pathname === "/");
 
+  // Observers, never a scroll listener: reading the scroll position while the
+  // page changes forced a layout on every event (trace of 2026-11-01).
+  // Scrolled once the 8 px marker at the top of the page (marketing layout)
+  // has left the screen; over the hero while its bottom is below the bar (72 px).
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const marker = document.querySelector<HTMLElement>("[data-nav-top]");
+    const scrolledIo = marker ? new IntersectionObserver(([e]) => setScrolled(!e?.isIntersecting)) : null;
+    if (marker) scrolledIo?.observe(marker);
+    const hero = document.querySelector<HTMLElement>("[data-nav-hero]");
+    const heroIo = hero
+      ? new IntersectionObserver(([e]) => setOverHero(!!e?.isIntersecting), { rootMargin: "-72px 0px 0px 0px" })
+      : null;
+    if (hero) heroIo?.observe(hero);
+    else setOverHero(false);
+    return () => {
+      scrolledIo?.disconnect();
+      heroIo?.disconnect();
+    };
+  }, [pathname]);
 
   // The menu closes on Escape, and on any link (onClick below).
   useEffect(() => {
@@ -44,19 +60,19 @@ export function SiteNav({ checks }: { checks: number }) {
   const current = (href: string) => (pathname === href || pathname.startsWith(`${href}/`) ? "page" : undefined);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className={cn("fixed inset-x-0 top-0 z-50", overHero && !open && "on-blue")}>
       <div
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-bg via-bg/75 to-transparent transition-opacity duration-300",
-          scrolled && "opacity-0",
+          (scrolled || overHero) && "opacity-0",
         )}
       />
       <div
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-18 border-b border-border bg-bg transition-opacity duration-300",
-          !scrolled && "opacity-0",
+          (!scrolled || overHero) && "opacity-0",
         )}
       />
       <nav aria-label="Main" className="container-rf relative flex h-18 items-center gap-7">

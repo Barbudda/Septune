@@ -15,6 +15,8 @@ export default function MarketingLayout({
     <div className="forge-ui">
       {/* Site-wide entity graph (Organization + WebSite + SoftwareApplication) */}
       <JsonLd data={siteGraph} />
+      {/* The nav watches this marker to know the page has moved (site-nav.tsx). */}
+      <div data-nav-top aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-2" />
       <SiteNav checks={RULE_CATALOG.length} />
       <main className="marketing relative">{children}</main>
       <SiteFooter />

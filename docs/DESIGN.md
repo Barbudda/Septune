@@ -1,6 +1,71 @@
 # Septune, direction artistique
 
-## Refonte du 2026-11-01 : pétrole, vert-de-gris et fusion (en vigueur sur le site marketing)
+## Refonte du 2026-11-01 au soir : papier, outremer et vert-jaune (en vigueur sur le site marketing)
+
+Décisions, recherche et mesures : [ADR 0006](adr/0006-scene-bleue-figures-de-pages.md). Ce bloc
+remplace, pour le site marketing, la palette pétrole et les plaques décrites juste dessous ;
+l'application garde son verre et ses couleurs.
+
+Retour de Hugo sur la version pétrole :
+- « tout va trop vite », les figures « n'ont pas de rapport avec le texte » ;
+- au lieu de se placer « sans se toucher, de façon logique », tout se mélange ;
+- la page est trop vide ;
+- deux couleurs banales qui vont bien ensemble, plus une vive qui rend le site mémorable ;
+- rien de trop sombre ;
+- mélanger le meilleur de ses deux vidéos.
+
+**Mot de ton : la scène.** Un seul objet à la fois, à sa place, et le texte autour.
+
+- **Couleurs** (jetons oklch dans `@theme`, redéfinis sous `.forge-ui`, contrastes calculés en
+  commentaire) :
+  - **le papier** `#f3f5fb` pour le fond des pages, jamais le blanc pur ;
+  - **l'outremer** `#2440e6` pour les scènes (hero, panneau, cartes, dernier appel), les liens et
+    les intitulés ;
+  - **l'encre** bleu nuit `#0e1a3f` pour le texte, puis `#3a4769` et `#56627f` pour les textes
+    secondaires ;
+  - **le vert-jaune** `#d7f23c`, la seule couleur vive. Il marque l'action principale, la seconde
+    voix du titre sur le bleu, l'attention dans les figures et l'étape en cours. Jamais en texte
+    sur le papier : il y sert de fond sous l'encre.
+- **Composition.**
+  - **Le hero** est une scène bleue plein écran, faite comme la vidéo 1. Le globe au centre, la
+    preuve en haut à droite, le titre en bas à gauche, la phrase et le champ d'adresse en bas à
+    droite. La zone du globe ne prend que la place que les mots laissent.
+  - **Les quatre étapes** (01 Read, 02 Catch, 03 Fix, 04 Watch) sont faites ainsi :
+    - **sur ordinateur,** le texte sur papier à gauche et un panneau bleu collant à droite. Les
+      quatre étapes y sont en pastilles, l'étape en cours en vert-jaune ;
+    - **sur téléphone,** une carte bleue au-dessus de chaque étape.
+  - **Ensuite :**
+    - le vrai rapport de Septune sur septune.dev ;
+    - les questions sur papier ;
+    - un dernier appel en bande bleue ;
+    - le pied de page clair.
+- **Figures** (`forge/structures.ts`). Faites de pages, pour qu'on les lise sans légende :
+  - le globe de pages ;
+  - le vrai plan de septune.dev (93 pages) ;
+  - les pages qui traversent la vérification de PR ;
+  - le fichier dont la ligne noindex sort ;
+  - les 25 fenêtres de sites.
+
+  Deux tons sur le bleu, presque blanc et bleu pâle ; le vert-jaune pour ce que la phrase
+  désigne.
+- **Mouvement.**
+  - **Qui décide.** Le scroll choisit l'étape et une horloge joue : 1,8 s pour passer d'une figure
+    à l'autre, sur place, du haut vers le bas.
+  - **L'histoire de l'étape** se joue une fois, ensuite tout se tient.
+  - **Les titres** sortent d'un flou lettre par lettre sur ordinateur, d'un bloc sur écran
+    tactile.
+  - **Pas d'effet parasite :** aucune rotation liée au scroll, pas de fluide sous la souris.
+  - **Rien ne se rejoue** en remontant.
+- **Surfaces.** Les sorties du produit (check de PR, patch, offres, rapport) sont des cartes
+  blanches à filet d'1 px sur le papier, avec une ombre douce à une seule direction. Un rayon de
+  10 px pour les cartes, 28 px pour le panneau, les pastilles en pilule.
+- **Typographie.** Inchangée : Fraunces pour les titres (la seconde voix en italique), Schibsted
+  Grotesk pour le texte, JetBrains Mono pour les intitulés et les sorties du produit.
+- **Signaux vibecodés gardés volontairement :**
+  - **n° 8, la surface translucide :** aucune ici, les cartes sont opaques.
+  - **n° 17, trois offres :** Free, Pro et Studio sont les trois offres réelles.
+
+## Refonte du 2026-11-01 : pétrole, vert-de-gris et fusion (remplacée le soir même, ADR 0006)
 
 Décisions et mesures : [ADR 0004](adr/0004-images-qui-racontent-et-palette.md), qui révise
 l'[ADR 0003](adr/0003-accueil-en-chapitres-sculptes.md). Ce bloc remplace, **pour le site marketing**,

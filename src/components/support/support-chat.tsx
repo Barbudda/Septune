@@ -78,7 +78,7 @@ export function SupportChat() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[90] print:hidden">
+    <div className="support-chat fixed bottom-4 right-4 z-[90] print:hidden">
       {open && (
         <LiquidGlass
           refraction={{ bezel: 20, thickness: 22, blur: 22 }}
