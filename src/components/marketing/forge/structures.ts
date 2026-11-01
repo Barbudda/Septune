@@ -14,6 +14,8 @@
  *   c = order (crawl order or tier, 0..1), kind, size, extra
  */
 
+import { CHILDREN, DEPTH } from "./shape";
+
 export const KIND = { flow: 0, node: 1, dust: 2, defect: 3, shift: 5 } as const;
 
 export type Structure = {
@@ -96,9 +98,6 @@ function dust(w: ReturnType<typeof writer>, r: () => number, sx: number, sy: num
 /** a: the branch heading, in radians from vertical (negative left, positive right). */
 type Node = { p: V3; depth: number; order: number; a: number };
 
-const DEPTH = 5;
-// The home page links to five sections, each to a few pages, and so on.
-const CHILDREN = [5, 3, 3, 2, 2];
 
 /**
  * A wide canopy rising from one root: the home page at the bottom, its

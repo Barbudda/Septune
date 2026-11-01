@@ -54,6 +54,29 @@ Couleurs : deux majoritaires qui vont bien ensemble, plus une vive qui donne de 
   - **Les panneaux os** montent ce que le produit produit vraiment (le check de PR, le diff,
     les offres) comme du papier posé sur le pétrole.
   - **Ailleurs :** des filets de 1 px, et un grain fin sur toute la surface.
+- **Le fond (ajout du même jour, [ADR 0005](adr/0005-plaques-et-fond-ecrit.md)).** Hugo : « je
+  n'aime pas le sombre qui fait vide », sans perdre les zones de texte animées et lisibles.
+  - **Les plaques :** chaque image est posée sur une plaque vert-de-gris (`forge/plate.tsx`).
+    Elle déborde jusqu'au bord droit de l'écran à côté du texte, et devient une bande pleine
+    largeur pour le flux de déploiements. Le texte reste sur le pétrole, l'image a sa pièce à
+    elle.
+  - **La légende :** chaque plaque porte une légende numérotée (« fig. 1 ») qui dit ce que
+    l'image montre, et un relevé en orange qui suit le scroll : pages lues, porte qui échoue,
+    patch appliqué, sites surveillés (`forge/readouts.ts`, mêmes états que les particules).
+  - **Le journal :** derrière l'image, un journal écrit très pâle, avec du vrai matériau
+    (`forge/ledgers.ts`) :
+    - les pages publiques du site ;
+    - le diff de déploiement de l'exemple de PR ;
+    - le correctif noindex dans chaque framework ;
+    - les 69 contrôles.
+
+    Il monte d'une ligne à mesure qu'on lit. Dessiné en CSS (`::before`), pour que les
+    contrôles de contraste ne le lisent pas comme du texte.
+  - **Les questions sur papier :** la FAQ passe sur un fond os aux coins arrondis
+    (`.ground-bone` redéfinit les jetons en encre). Sa colonne de gauche reste visible au
+    scroll, avec le contact et l'audit.
+  - **La navigation :** une barre pétrole pleine dès que la page bouge, pour qu'aucune ligne ne
+    passe sous les liens.
 - **Typographie.**
   - **Fraunces** pour les titres, avec une seconde voix en italique (`<em>` dans h1/h2).
   - **Schibsted Grotesk** pour le texte.

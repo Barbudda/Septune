@@ -18,11 +18,20 @@ const LINK =
 /**
  * A thin monospace line over the page: the mark, three links, sign in, and
  * a round counter with the number of checks (it opens the docs that list
- * them). No bar, no glass: a fade keeps it readable over the content.
+ * them). At the top of the page a fade is enough; once the page moves, a
+ * solid petrol bar, so no line of text ever runs under the links.
  */
 export function SiteNav({ checks }: { checks: number }) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // The menu closes on Escape, and on any link (onClick below).
   useEffect(() => {
@@ -36,7 +45,20 @@ export function SiteNav({ checks }: { checks: number }) {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-bg via-bg/75 to-transparent" />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-bg via-bg/75 to-transparent transition-opacity duration-300",
+          scrolled && "opacity-0",
+        )}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-18 border-b border-border bg-bg transition-opacity duration-300",
+          !scrolled && "opacity-0",
+        )}
+      />
       <nav aria-label="Main" className="container-rf relative flex h-18 items-center gap-7">
         <Link href="/" aria-label="Septune home" className="rounded-full">
           <Logo />

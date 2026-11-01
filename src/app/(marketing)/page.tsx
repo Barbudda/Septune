@@ -3,6 +3,10 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ForgeField } from "@/components/marketing/forge/forge-field";
 import { Chapter } from "@/components/marketing/forge/chapter";
+import { Plate } from "@/components/marketing/forge/plate";
+import { finalReadout } from "@/components/marketing/forge/readouts";
+import { CHECK_LOG, CRAWL_LOG, DEPLOY_LOG, PATCH_LOG } from "@/components/marketing/forge/ledgers";
+import { CONTACT_EMAIL } from "@/components/marketing/site-footer";
 import { TourVideo } from "@/components/marketing/tour-video";
 import { FAQS } from "@/components/marketing/faq";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -19,8 +23,8 @@ const CHECKS = RULE_CATALOG.length;
 
 /*
  * Each chapter's picture is drawn by the forge field (SCENES in
- * forge/forge-field.tsx, keyed by the chapter id) inside its [data-stage]
- * box. Text sits above the canvas (relative z-10); section grounds below it.
+ * forge/scenes.ts, keyed by the chapter id) inside the [data-stage] box of
+ * its plate. Text sits above the canvas (relative z-10); plates below it.
  */
 
 const LABEL = "font-mono text-[13px] tracking-wide text-molten-bright";
@@ -31,9 +35,8 @@ const TEXT_LINK =
 // Reveal delays for lists, written out so Tailwind sees every class.
 const STAGGER = ["[--d:90]", "[--d:180]", "[--d:270]", "[--d:360]", "[--d:450]", "[--d:540]"];
 // Text left, picture right on large screens; picture above on small ones.
-const SPLIT = "container-rf grid min-h-[110svh] items-center gap-8 py-24 lg:grid-cols-[minmax(0,31rem)_1fr] lg:gap-16 lg:py-32";
-// The picture's box runs past the column to the right edge of the screen: the pictures are wide.
-const STAGE_SIDE = "h-[44svh] lg:order-2 lg:-mr-[14vw] lg:h-[80svh]";
+const SPLIT = "container-rf grid min-h-[100svh] items-center gap-10 py-16 lg:grid-cols-[minmax(0,31rem)_1fr] lg:gap-16 lg:py-20";
+const PLANS = PRICING_TIERS.map((t) => `${t.limits.sites} on ${t.name}`).join(", ");
 
 export default function LandingPage() {
   return (
@@ -95,9 +98,15 @@ export default function LandingPage() {
       </Chapter>
 
       {/* ── 1 · The crawl: the same tree, read page by page ── */}
-      <Chapter id="features" labelledBy="reads-title" className="field-right">
+      <Chapter id="features" labelledBy="reads-title">
         <div className={SPLIT}>
-          <div data-stage aria-hidden className={STAGE_SIDE} />
+          <Plate
+            fig={1}
+            className="lg:order-2"
+            caption="Your site as a crawler sees it: the home page at the root, then every page its links lead to. The orange front is the crawl."
+            readout={finalReadout("features")}
+            ledger={CRAWL_LOG}
+          />
           <div className="relative z-10 lg:order-1">
             <p data-reveal className={LABEL}>
               [what it reads]
@@ -135,8 +144,8 @@ export default function LandingPage() {
       </Chapter>
 
       {/* ── 2 · Where it's caught: deploys through three checkpoints ── */}
-      <Chapter id="how-it-works" labelledBy="caught-title" className="field-band">
-        <div className="container-rf relative z-10 pt-28 text-center lg:pt-36">
+      <Chapter id="how-it-works" labelledBy="caught-title">
+        <div className="container-rf relative z-10 pt-16 text-center lg:pt-20">
           <p data-reveal className={LABEL}>
             [where it&apos;s caught]
           </p>
@@ -149,11 +158,16 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="container-rf">
-          <div data-stage aria-hidden className="h-[32svh] w-full md:h-[36svh]" />
-        </div>
+        <Plate
+          band
+          fig={2}
+          className="mt-12 lg:mt-16"
+          caption="Every deploy passes three checks. The page that would leave Google stops at the pull request."
+          readout={finalReadout("how-it-works")}
+          ledger={DEPLOY_LOG}
+        />
 
-        <div className="container-rf relative z-10 grid gap-10 pb-28 md:grid-cols-3 md:gap-8 lg:pb-36">
+        <div className="container-rf relative z-10 grid gap-10 pt-12 pb-24 md:grid-cols-3 md:gap-8 lg:pt-14 lg:pb-32">
           <div data-reveal className="md:text-center [--d:240]">
             <p className="font-mono text-[13px] text-verdigris-soft">before you push</p>
             <p className="mt-3 text-sm leading-relaxed text-fg-muted md:mx-auto md:max-w-[17rem]">
@@ -190,9 +204,16 @@ export default function LandingPage() {
       </Chapter>
 
       {/* ── 3 · How it's fixed: the file, and the line that breaks it ── */}
-      <Chapter id="fix" labelledBy="fix-title" className="field-ember">
+      <Chapter id="fix" labelledBy="fix-title">
         <div className={SPLIT}>
-          <div data-stage aria-hidden className={STAGE_SIDE} />
+          <Plate
+            fig={3}
+            ember
+            className="lg:order-2"
+            caption="The page's file, line by line. The noindex line comes out and the file closes up."
+            readout={finalReadout("fix")}
+            ledger={PATCH_LOG}
+          />
           <div className="relative z-10 lg:order-1">
             <p data-reveal className={LABEL}>
               [how it&apos;s fixed]
@@ -235,9 +256,15 @@ export default function LandingPage() {
       </Chapter>
 
       {/* ── 4 · Start: as many sites light up as the plan watches ── */}
-      <Chapter id="start" labelledBy="start-title" className="field-right">
+      <Chapter id="start" labelledBy="start-title">
         <div className={SPLIT}>
-          <div data-stage aria-hidden className={STAGE_SIDE} />
+          <Plate
+            fig={4}
+            className="lg:order-2"
+            caption={`Each light is a site Septune watches: ${PLANS}.`}
+            readout={finalReadout("start")}
+            ledger={CHECK_LOG}
+          />
           <div className="relative z-10 lg:order-1">
             <p data-reveal className={LABEL}>
               [start]
@@ -288,14 +315,36 @@ export default function LandingPage() {
         </div>
       </Chapter>
 
-      {/* ── Questions: plain text, nothing waits ── */}
-      <section id="faq" aria-labelledby="faq-title" className="relative border-t border-border py-24 md:py-32">
-        <div className="container-rf relative z-10 grid gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-16">
-          <div>
+      {/* ── Questions: on paper, plain text, nothing waits ── */}
+      <section
+        id="faq"
+        aria-labelledby="faq-title"
+        className="ground-bone relative z-10 mt-8 rounded-t-[28px] py-24 md:rounded-t-[40px] md:py-32"
+      >
+        <div className="container-rf grid gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-16">
+          <div className="lg:sticky lg:top-28 lg:self-start">
             <p className={LABEL}>[questions]</p>
             <h2 id="faq-title" className="mt-5 text-[2.4rem] leading-[1.05] tracking-[-0.02em] md:text-5xl">
               What people ask <em>before they try it.</em>
             </h2>
+            <p className="mt-6 text-base leading-relaxed text-fg-muted">
+              Something not covered here? Write to{" "}
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="text-fg underline decoration-fg/30 underline-offset-4 transition-colors duration-200 hover:decoration-molten-bright"
+              >
+                {CONTACT_EMAIL}
+              </a>
+              , or audit your own site and read what Septune reports.
+            </p>
+            <p className="mt-7">
+              <Link
+                href="/audit"
+                className="inline-flex h-11 items-center rounded-full bg-fg px-5 text-[15px] font-medium text-bone transition-colors duration-200 hover:bg-molten-deep"
+              >
+                Audit a URL, free
+              </Link>
+            </p>
           </div>
           <div className="border-t border-border">
             {FAQS.map((item) => (

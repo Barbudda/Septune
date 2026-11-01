@@ -16,10 +16,16 @@ export type ChapterEntry = {
   stageRect: { cx: number; cy: number; w: number; h: number };
   revealed: boolean;
   onReveal?: () => void;
+  /** Called on every measure with the chapter's progress, for text that follows the picture. */
+  onProgress?: (p: number) => void;
 };
 
 /** A chapter's text is read in when its top reaches this fraction of the viewport. */
 export const REVEAL_AT = 0.6;
+
+/** A chapter's own progress: 0 when its top is at 60 % of the viewport, 1 when its bottom is. */
+export const progressOf = (top: number, bottom: number, vh: number) =>
+  Math.min(1, Math.max(0, (vh * 0.6 - top) / Math.max(1, bottom - top)));
 
 const entries: ChapterEntry[] = [];
 let viewport = 1;
@@ -39,6 +45,7 @@ function measure() {
       e.revealed = true;
       e.onReveal?.();
     }
+    e.onProgress?.(progressOf(r.top, r.bottom, viewport));
   }
 }
 
@@ -47,7 +54,10 @@ function schedule() {
 }
 
 /** Registers a chapter. `revealedNow` skips the reveal (the hero, or a chapter already passed on load). */
-export function registerChapter(el: HTMLElement, opts: { revealedNow?: boolean; onReveal?: () => void } = {}): () => void {
+export function registerChapter(
+  el: HTMLElement,
+  opts: { revealedNow?: boolean; onReveal?: () => void; onProgress?: (p: number) => void } = {},
+): () => void {
   const entry: ChapterEntry = {
     el,
     stage: el.querySelector<HTMLElement>("[data-stage]"),
@@ -56,6 +66,7 @@ export function registerChapter(el: HTMLElement, opts: { revealedNow?: boolean; 
     stageRect: { cx: 0, cy: 0, w: 1, h: 1 },
     revealed: !!opts.revealedNow,
     onReveal: opts.onReveal,
+    onProgress: opts.onProgress,
   };
   entries.push(entry);
   // Keep document order whatever the mount order.

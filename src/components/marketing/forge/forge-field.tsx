@@ -1,43 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { chapters, measureChapters, type ChapterEntry } from "./chapters";
-import type { Forge, ForgeFrame, ForgeSlot } from "./engine";
+import { chapters, measureChapters, progressOf, type ChapterEntry } from "./chapters";
+import type { Forge, ForgeFrame } from "./engine";
+import { clamp01, FALLBACK, SCENES } from "./scenes";
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const smooth = (a: number, b: number, v: number) => {
-  const t = clamp01((v - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-type Scene = {
-  /** Structure id, see structures.ts: 0 tree, 1 stream, 2 code, 3 sites. */
-  sid: number;
-  /** The chapter's own progress, 0 when its top is at 60 % of the viewport, 1 when its bottom is. */
-  state: (p: number) => ForgeSlot["state"];
-  rotY: (p: number) => number;
-  rotX: number;
-};
-
-/**
- * What each chapter shows, keyed by the chapter's id. Every picture says
- * what its text says, and moves with the scroll while the chapter is read.
- */
-const SCENES: Record<string, Scene> = {
-  // A site as a crawler reads it, rising from the horizon, turning slowly.
-  top: { sid: 0, state: () => [-1, 0, 0, 0], rotY: (p) => 0.15 + p * 0.5, rotX: -0.04 },
-  // The crawl: a molten front runs from the home page out to the last pages as the chapter is read.
-  features: { sid: 0, state: (p) => [-0.1 + p * 1.3, 0, 0, 0], rotY: (p) => 0.35 + p * 0.55, rotX: 0.1 },
-  // Deploys through three checkpoints; the pull-request gate heats up as the defect piles on it.
-  "how-it-works": { sid: 1, state: (p) => [smooth(0, 0.45, p), 0, 0, 0], rotY: (p) => -0.42 + p * 0.12, rotX: 0.06 },
-  // The file: the noindex line lifts out, the lines close up and turn green.
-  fix: { sid: 2, state: (p) => [smooth(0.08, 0.8, p), 0, 0, 0], rotY: (p) => -0.32 + p * 0.22, rotX: 0.04 },
-  // Sites watched: 1, then 5, then 25 as the plans go by.
-  start: { sid: 3, state: (p) => [p < 0.3 ? 0.02 : p < 0.62 ? 0.3 : 1.01, 0, 0, 0], rotY: (p) => 0.2 - p * 0.35, rotX: -0.12 },
-};
-const FALLBACK: Scene = SCENES.top!;
 
 /**
  * The homepage's WebGL layer, screen-blended over the page. Every frame it
@@ -64,7 +33,6 @@ export function ForgeField() {
     const dpr = Math.min(window.devicePixelRatio || 1, compact ? 1.5 : 2);
 
     const sceneOf = (e: ChapterEntry) => SCENES[e.el.id] ?? FALLBACK;
-    const progressOf = (e: ChapterEntry, vh: number) => clamp01((vh * 0.6 - e.top) / Math.max(1, e.bottom - e.top));
 
     const frame = (): ForgeFrame => {
       measureChapters();
@@ -86,8 +54,8 @@ export function ForgeField() {
       const t = ci === 0 ? 1 : ease(clamp01((vh - cur.top) / (vh * 0.6)));
       const a = sceneOf(prev);
       const b = sceneOf(cur);
-      const pa = progressOf(prev, vh);
-      const pb = progressOf(cur, vh);
+      const pa = progressOf(prev.top, prev.bottom, vh);
+      const pb = progressOf(cur.top, cur.bottom, vh);
       const ra = prev.stageRect;
       const rb = cur.stageRect;
 

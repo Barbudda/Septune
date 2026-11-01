@@ -347,21 +347,6 @@
   .hero-clearing {
     background: radial-gradient(44% 46% at 50% 48%, rgb(4 27 31 / 0.82), rgb(4 27 31 / 0.45) 58%, transparent 80%);
   }
-  /* Chapter grounds: a soft glow where the chapter's picture sits. */
-  .field-right {
-    background: radial-gradient(48% 60% at 74% 50%, rgb(79 191 174 / 0.12), transparent 72%);
-  }
-  .field-band {
-    background:
-      radial-gradient(70% 22% at 50% 52%, rgb(79 191 174 / 0.13), transparent 75%),
-      radial-gradient(14% 12% at 50% 52%, rgb(255 106 43 / 0.12), transparent 80%);
-  }
-  .field-ember {
-    background:
-      radial-gradient(44% 50% at 74% 52%, rgb(255 106 43 / 0.09), transparent 72%),
-      radial-gradient(52% 64% at 74% 50%, rgb(79 191 174 / 0.1), transparent 75%);
-  }
-
   /* Bone panels: the product's own output (a check, a diff, a plan), set
      like paper on the petrol. */
   .panel-bone {
@@ -369,6 +354,125 @@
     color: var(--color-ink-on-bone);
     border-radius: 6px;
     box-shadow: 0 24px 48px -28px rgb(0 0 0 / 0.7);
+  }
+
+  /* Plates (forge/plate.tsx): the ground each chapter's picture is drawn on.
+     A field of verdigris against the petrol, so the page is never one dark
+     sheet; the picture's light is screen-blended onto it and may run past
+     its edge. */
+  .plate {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background:
+      radial-gradient(60% 55% at 58% 42%, rgb(79 191 174 / 0.2), transparent 72%),
+      linear-gradient(155deg, #0f4a4f 0%, #0b3a3f 48%, #072d32 100%);
+    box-shadow: inset 0 0 0 1px rgb(143 220 207 / 0.13);
+  }
+  .plate-ember {
+    background:
+      radial-gradient(30% 24% at 56% 38%, rgb(255 106 43 / 0.2), transparent 75%),
+      radial-gradient(60% 55% at 58% 42%, rgb(79 191 174 / 0.15), transparent 72%),
+      linear-gradient(155deg, #0f4a4f 0%, #0b3a3f 48%, #072d32 100%);
+  }
+  /* Beside the text: full width on small screens, bled to the right edge of
+     the screen on large ones (the container's padding plus its outer margin). */
+  .plate-side {
+    height: 52svh;
+    margin-inline: -1.25rem;
+  }
+  .plate-band {
+    height: 46svh;
+  }
+  .plate-caption {
+    padding: 12px 20px;
+    border-top: 1px solid rgb(143 220 207 / 0.14);
+    background: rgb(4 27 31 / 0.55);
+  }
+  .plate-band .plate-caption {
+    margin-inline: -1.25rem;
+  }
+  @media (min-width: 768px) {
+    .plate-side {
+      margin-inline: -2rem;
+    }
+    .plate-band {
+      height: 50svh;
+    }
+    .plate-band .plate-caption {
+      margin-inline: 0;
+      border-inline: 1px solid rgb(143 220 207 / 0.14);
+      border-radius: 6px 6px 0 0;
+    }
+  }
+  @media (min-width: 1024px) {
+    .plate-side {
+      height: 78svh;
+      margin-left: 0;
+      margin-right: calc(-2rem - max(0px, (100vw - 80rem) / 2));
+      border-radius: 28px 0 0 28px;
+    }
+    .plate-side .plate-caption {
+      padding-left: 28px;
+      padding-right: calc(2rem + max(0px, (100vw - 80rem) / 2));
+    }
+  }
+
+  /* The log behind a picture: faint, moving up a line at a time with the
+     reading (chapter.tsx). Opacity on the column (not an alpha colour) so the
+     molten lines fade with the rest. */
+  .ledger {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 50%;
+    overflow: hidden;
+    padding: 24px 28px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 20px;
+    white-space: pre;
+    color: var(--color-verdigris-soft);
+    opacity: 0.15;
+    pointer-events: none;
+    user-select: none;
+    mask-image: linear-gradient(180deg, transparent, #000 14%, #000 66%, transparent 90%);
+  }
+  /* Each column fades toward the middle of the plate, where the picture is. */
+  .ledger .ledger-roll {
+    mask-image: linear-gradient(90deg, #000 35%, transparent 95%);
+  }
+  .ledger-right {
+    left: auto;
+    right: 0;
+    display: none;
+  }
+  .ledger-right .ledger-roll {
+    mask-image: linear-gradient(90deg, transparent 5%, #000 55%);
+  }
+  @media (min-width: 768px) {
+    .ledger-right {
+      display: block;
+    }
+  }
+  .ledger-roll p::before {
+    content: attr(data-l);
+  }
+
+  /* A paper ground for plain reading (the questions): the tokens turn dark on
+     bone, so the same utilities read on it. Contrast on #f1ebdf: fg 13:1,
+     muted 7.4:1, subtle 5.5:1, molten 5.5:1, verdigris-soft 5.6:1, and
+     verdigris 4.1:1 (icons only). */
+  .ground-bone {
+    --color-fg: #10282c;
+    --color-fg-muted: #364f4f;
+    --color-fg-subtle: #4a6262;
+    --color-border: rgb(16 40 44 / 0.16);
+    --color-molten-bright: #a8380a;
+    --color-verdigris: #2a7d71;
+    --color-verdigris-soft: #1c675d;
+    background-color: var(--color-bone);
+    color: var(--color-fg);
   }
 
   .forge-ui .lg,

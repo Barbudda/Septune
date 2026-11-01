@@ -3,16 +3,21 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { registerChapter, startsBelow } from "./chapters";
+import { READOUTS } from "./readouts";
 
 /**
  * A homepage chapter. Its picture in the forge field is chosen by its id
- * (see SCENES in forge-field.tsx) and sits in its [data-stage] box. Its text
+ * (see SCENES in scenes.ts) and sits in its [data-stage] box. Its text
  * is in the server HTML and visible without JavaScript; it only waits to be
  * read in when the chapter starts below the fold and motion is allowed.
  * Read in once, then left alone: scrolling back up shows it as it is.
  *
  * Reveal state lives in a data attribute (CSS does the animation), so a
- * reveal never re-renders React.
+ * reveal never re-renders React. The caption's readout and the log behind
+ * the picture follow the scroll the same way, written straight into the DOM
+ * only when a word or a line changes. The log moves with the reading, not
+ * with a clock: a timed animation cost a sixth of the frame rate on a
+ * throttled phone (2026-11-01).
  */
 export function Chapter({
   id,
@@ -36,6 +41,11 @@ export function Chapter({
     const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const wait = !first && motion && startsBelow(el);
     if (wait) el.dataset.chapter = "waiting";
+    const readout = el.querySelector<HTMLElement>("[data-readout]");
+    const say = READOUTS[id];
+    const rolls = motion
+      ? Array.from(el.querySelectorAll<HTMLElement>(".ledger-roll"), (node) => ({ node, n: Number(node.dataset.n) || 0, at: 0 }))
+      : [];
     return registerChapter(el, {
       revealedNow: !wait,
       onReveal: () => {
@@ -43,11 +53,24 @@ export function Chapter({
         el.dataset.chapter = "revealed";
         countUp(el);
       },
+      onProgress: (p) => {
+        if (readout && say) {
+          const text = say(p);
+          if (readout.textContent !== text) readout.textContent = text;
+        }
+        // Over the chapter the log scrolls through its whole list, a line at a time.
+        for (const roll of rolls) {
+          const at = Math.round(p * roll.n);
+          if (at === roll.at) continue;
+          roll.at = at;
+          roll.node.style.transform = `translateY(${-at}lh)`;
+        }
+      },
     });
-  }, [first]);
+  }, [first, id]);
 
   return (
-    <section ref={ref} id={id} aria-labelledby={labelledBy} className={cn("chapter relative", className)}>
+    <section ref={ref} id={id} aria-labelledby={labelledBy} className={cn("chapter relative overflow-x-clip", className)}>
       {children}
     </section>
   );
