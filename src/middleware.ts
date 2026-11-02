@@ -20,8 +20,9 @@ export const config = {
     "/settings/:path*",
     "/billing/:path*",
     "/monitoring/:path*",
-    "/login",
-    "/signup",
+    // Not /login nor /signup: static pages that need no session work. Through
+    // the middleware they answered in 850-920 ms in production (Septune's
+    // TTFB check, 2026-11-01); the auth callbacks still go through it.
     "/auth/:path*",
   ],
 };
