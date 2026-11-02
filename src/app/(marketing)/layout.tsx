@@ -1,8 +1,12 @@
+import type { Viewport } from "next";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { JsonLd } from "@/components/seo/json-ld";
 import { siteGraph } from "@/lib/seo/schema";
 import { RULE_CATALOG } from "@/lib/audit/catalog";
+
+/** The browser bar takes the sky's top on the public pages; the app keeps its own. */
+export const viewport: Viewport = { themeColor: "#172793" };
 
 export default function MarketingLayout({
   children,
