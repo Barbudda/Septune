@@ -49,6 +49,10 @@ function jaccard(a: Set<number>, b: Set<number>): number {
  */
 const BOILER_K = 6;
 const BOILER_SHARE = 0.3;
+
+/** Legal and policy pages, by their usual paths in English, French and German. */
+const POLICY_PAGE =
+  /^\/(legal|legal-notice|imprint|impressum|mentions-legales|privacy|privacy-policy|terms|terms-of-service|terms-and-conditions|tos|cgu|cgv|cookies|cookie-policy|confidentialite|datenschutz)\/?$/i;
 export function withoutBoilerplate(texts: string[]): string[] {
   const words = texts.map((t) => t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean));
   if (texts.length < 5) return words.map((w) => w.join(" "));
@@ -143,10 +147,13 @@ export function analyzeContent(
   const SIM_THRESHOLD = 0.55;
   const NEAREST = 3;
   for (let i = 0; i < pages.length; i++) {
+    // A legal notice or a privacy policy has no topic to link from or to: its
+    // few lines left after the template only look "close" by accident.
+    if (POLICY_PAGE.test(paths[i]!)) continue;
     // Rank other pages by topical similarity to page i.
     const ranked: { j: number; sim: number }[] = [];
     for (let j = 0; j < pages.length; j++) {
-      if (i === j) continue;
+      if (i === j || POLICY_PAGE.test(paths[j]!)) continue;
       const sim = cosine(vectors[i]!, vectors[j]!);
       if (sim >= SIM_THRESHOLD) ranked.push({ j, sim });
     }

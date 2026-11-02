@@ -183,13 +183,11 @@ const buildSitemap: Builder = (issue, repo) => {
       `// Add every public route here (or generate from your content source).`,
       `const routes = ["/"];`,
       ``,
+      `// No lastModified unless it comes from the content's real date: Google`,
+      `// uses it only when it is consistently accurate, and a build timestamp on`,
+      `// every URL is not. Google ignores changeFrequency and priority.`,
       `export default function sitemap(): MetadataRoute.Sitemap {`,
-      `  return routes.map((route) => ({`,
-      `    url: \`${origin}\${route}\`,`,
-      `    lastModified: new Date(),`,
-      `    changeFrequency: "weekly",`,
-      `    priority: route === "/" ? 1 : 0.7,`,
-      `  }));`,
+      `  return routes.map((route) => ({ url: \`${origin}\${route}\` }));`,
       `}`,
     ];
     return make(issue, "sitemap", {
