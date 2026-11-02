@@ -98,10 +98,15 @@ export default function LandingPage() {
       <ForgeField />
       <Reveal />
 
-      {/* ── Hero: the first stage. The figure above, the words below it ── */}
+      {/* ── Hero: the first stage. The galaxy on its horizon, the words below it ── */}
       <section data-forge-step="hero" data-forge-region data-nav-hero aria-labelledby="hero-title" className="hero relative overflow-hidden">
+        {/* The sky: one gradient field, also behind the steps' panel and the last call. */}
+        <div aria-hidden className="sky-field" />
+        {/* The galaxy's box: centred on the horizon, wider than the screen. The
+            words stand in clearings (data-forge-hole) where it is dimmed. */}
+        <div aria-hidden data-forge-stage="hero" className="hero-stage" />
         {/* Proof before atmosphere: the real report, one click away. */}
-        <Link href="#report" className="hero-proof">
+        <Link href="#report" data-forge-hole className="hero-proof">
           <span className="report-score report-score-sm" style={{ "--score": 99 } as React.CSSProperties}>
             <span className="text-[15px] font-semibold text-navy">99</span>
           </span>
@@ -110,11 +115,9 @@ export default function LandingPage() {
             <span className="mt-0.5 block font-mono text-[12px] text-navy/70">93 pages in 8 s · see the report</span>
           </span>
         </Link>
-        <div className="container-rf relative z-10 flex min-h-[100svh] flex-col pt-[76px] pb-10 lg:pb-14">
-          {/* The figure's box takes the room the words leave: it can never sit under them. */}
-          <div aria-hidden data-forge-stage="hero" className="hero-stage" />
+        <div className="hero-words container-rf relative z-10 flex min-h-[100svh] flex-col justify-end pt-[76px] pb-10 lg:pb-14">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-end lg:gap-14">
-            <div>
+            <div data-forge-hole>
               <p className="hero-pill">
                 <span aria-hidden className="size-1.5 rounded-full bg-lime" />
                 technical SEO, on every deploy
@@ -123,7 +126,7 @@ export default function LandingPage() {
                 <Letters parts={HERO} />
               </h1>
             </div>
-            <div className="lg:pb-2">
+            <div data-forge-hole className="lg:pb-2">
               <p className="text-lg leading-relaxed text-on-blue md:text-xl">
                 Septune crawls your site like a search engine and checks it where SEO breaks: in your editor, in every
                 pull request, and in production.
@@ -166,6 +169,7 @@ export default function LandingPage() {
           <div className="story-stage-grid container-rf">
             <div className="stage-spacer" />
             <div data-forge-panel className="stage-col">
+              <div aria-hidden className="sky-field sky-field--panel" />
               {/* The particles are masked to this area only, never over the chips below it. */}
               <div aria-hidden data-forge-region data-forge-stage="read catch fix watch" className="stage-figure" />
               <nav aria-label="Steps" className="stage-chips">
@@ -364,8 +368,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── Last call, on the blue again ── */}
-      <section aria-labelledby="cta-title" className="cta-band relative z-10">
-        <div className="container-rf grid gap-8 py-20 md:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-end lg:gap-16">
+      <section aria-labelledby="cta-title" className="cta-band relative z-10 overflow-hidden">
+        <div aria-hidden className="sky-field sky-field--dawn" />
+        <div className="container-rf relative grid gap-8 py-20 md:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-end lg:gap-16">
           <h2 id="cta-title" className="cta-title">
             See what Septune finds <em>on your site.</em>
           </h2>

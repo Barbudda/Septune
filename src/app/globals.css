@@ -50,20 +50,21 @@
   --color-molten-deep: #a8380a;
 
   /* Marketing palette since the 2026-11-01 evening redesign (docs/DESIGN.md,
-     ADR 0006, ADR 0007): two plain colours that go together, paper and blue,
-     and one vivid, lime. The stages are a night blue lit with ultramarine,
-     so the figures' dust glows on them (2026-11-02, "assombris un petit
-     peu"). Contrast, computed: navy on paper 14.1:1, ultramarine on paper
-     5.9:1, white on night 14:1, lime on night 11.1:1, navy on lime 13.4:1. */
+     ADR 0006 to 0008): two plain colours that go together, paper and blue,
+     and one vivid, lime. The stages are a sky of blues (.sky-field), from
+     this deep blue at the top to ultramarine at the horizon: lighter than
+     the night of ADR 0007, which Hugo found "un peu cheap". Contrast,
+     computed: navy on paper 14.1:1, ultramarine on paper 5.9:1, white on the
+     sky's top 12:1 and 9:1 under the horizon, lime 9.5:1, navy on lime 13.4:1. */
   --color-paper: oklch(93.8% 0.016 268); /* #e6eaf6 */
   --color-paper-deep: oklch(90.6% 0.022 267); /* #d9e0ef */
   --color-navy: oklch(23.2% 0.073 267.1); /* #0e1a3f */
-  --color-night: oklch(30.5% 0.15 267.5); /* #102079 */
+  --color-night: oklch(35% 0.175 268); /* #172793, the sky's top */
   --color-ultramarine: oklch(48.1% 0.247 267); /* #2440e6 */
   --color-ultramarine-deep: oklch(41% 0.208 267); /* #1b33b8 */
   --color-lime: oklch(91.1% 0.195 118); /* #d7f23c */
-  --color-on-blue: oklch(92.7% 0.035 273.3); /* #dfe6ff, 11.2:1 on night */
-  --color-on-blue-muted: oklch(87.6% 0.061 273.8); /* #c9d4ff, 9.6:1 on night */
+  --color-on-blue: oklch(92.7% 0.035 273.3); /* #dfe6ff, 5.7:1 on ultramarine */
+  --color-on-blue-muted: oklch(87.6% 0.061 273.8); /* #c9d4ff, 4.9:1 on ultramarine */
 
   /* Fonts (wired by next/font in layout.tsx) */
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
@@ -402,19 +403,107 @@
     outline-color: var(--color-lime);
   }
 
-  /* ── Hero: the first stage. Night blue, and a pool of ultramarine where
-     the globe turns, the way a nebula lights the sky behind it. */
-  .hero {
+  /* ── The sky (2026-11-02, ADR 0008). One gradient field for every stage,
+     after Terouva's and the gradient sites that hold up today: the colour is
+     light, not paint. Deep blue above, ultramarine brightening to an
+     electric blue at a horizon where the hero's galaxy lies, a fine line of
+     light at the foot of each stage (--rim) with lime at its heart, like
+     dawn where the sky meets the page, and orbits round the galaxy's core,
+     like the ripples under the tree of Hugo's reference video. Words only ever
+     stand where the field is at or under oklch 50%: white keeps 6:1 there.
+     It stands still: the galaxy brings the motion. A slow drift, even on
+     transforms only, restyled the page on every frame and cost a dropped
+     frame in twenty on a 4x-throttled phone (trace of 2026-11-02). It
+     overhangs its stage by 4%, which --horizon and --rim count with. */
+  .sky-field {
+    --band: 0.9;
+    position: absolute;
+    inset: -4%;
+    pointer-events: none;
     background:
-      radial-gradient(54% 48% at 50% 36%, oklch(48.1% 0.247 267 / 0.55), transparent 74%),
-      var(--color-night);
+      radial-gradient(44% 0.7% at 50% var(--rim, var(--horizon)), oklch(98% 0.06 118 / 0.9), oklch(91.1% 0.195 118 / 0.32) 50%, transparent 100%),
+      radial-gradient(62% 4% at 50% var(--rim, var(--horizon)), oklch(93% 0.05 245 / 0.3), transparent 100%),
+      radial-gradient(34% 13% at 50% var(--horizon), oklch(86% 0.09 240 / calc(0.6 * var(--band))), transparent 100%),
+      radial-gradient(88% 34% at 50% var(--horizon), oklch(60% 0.2 258 / var(--band)), oklch(53% 0.225 263 / calc(0.55 * var(--band))) 55%, transparent 100%),
+      radial-gradient(45% 60% at 0% 18%, oklch(42% 0.2 278 / 0.55), transparent 80%),
+      radial-gradient(45% 60% at 100% 12%, oklch(50% 0.17 245 / 0.45), transparent 80%),
+      linear-gradient(
+        to bottom in oklab,
+        oklch(35% 0.175 268) 0%,
+        oklch(43% 0.22 267) calc(var(--horizon) - 20%),
+        oklch(49% 0.24 266) var(--horizon),
+        oklch(42% 0.215 267) calc(var(--horizon) + 24%),
+        oklch(37% 0.19 268) 100%
+      );
   }
-  /* The figure's box: in the flow above the words, so it only ever gets the
-     room they leave (at least a third of the screen). */
+  /* The orbits: rings round the galaxy's core, at the disc's own lean. */
+  .sky-field::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-radial-gradient(
+      ellipse var(--orbit-w) calc(var(--orbit-w) * 0.435) at 50% var(--horizon),
+      transparent 0 calc(var(--orbit) - 1.5px),
+      oklch(90% 0.06 245 / 0.14) calc(var(--orbit) - 1.5px) var(--orbit)
+    );
+    mask-image: radial-gradient(64% 36% at 50% var(--horizon), #000 12%, transparent 80%);
+  }
+  /* Behind the four steps: the same sky, its horizon behind the figure, a
+     softer band so the words in the figures read, and no orbits. */
+  .sky-field--panel {
+    --horizon: 48%;
+    /* No line here: it would cross the figures. */
+    --rim: -50%;
+    --band: 0.42;
+  }
+  .sky-field--panel::after {
+    display: none;
+  }
+  /* The last call: the horizon at its foot, the light rising from it. */
+  .sky-field--dawn {
+    --horizon: 96%;
+    --rim: 95.5%;
+    --band: 0.8;
+  }
+  .sky-field--dawn::after {
+    display: none;
+  }
+
+  /* ── Hero: the first stage. The galaxy lies on the sky's horizon, the
+     words stand below it in clearings the canvas dims. */
+  /* The fine line of light is at its foot, where the sky meets the page
+     (the field overhangs the hero by 4%: 95.5% of it is the hero's 99%). */
+  .hero {
+    --horizon: 26%;
+    --rim: 95.5%;
+    --orbit: 42px;
+    --orbit-w: 400px;
+    background: var(--color-night);
+  }
+  @media (min-width: 1024px) {
+    .hero {
+      --horizon: 38%;
+      --orbit: 112px;
+      --orbit-w: 1000px;
+    }
+  }
+  /* The galaxy's box: centred on the horizon, wider than the screen so the
+     disc reaches its edges. */
   .hero-stage {
-    flex: 1 1 auto;
-    min-height: 34svh;
-    margin-bottom: 1.5rem;
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    top: calc(var(--horizon) - 20%);
+    height: 40%;
+    pointer-events: none;
+  }
+  @media (min-width: 1024px) {
+    .hero-stage {
+      left: -12%;
+      right: -12%;
+      top: calc(var(--horizon) - 50%);
+      height: 100%;
+    }
   }
   .hero-pill {
     display: inline-flex;
@@ -569,10 +658,10 @@
     display: flex;
     height: 100%;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
     border-radius: 22px;
-    background:
-      radial-gradient(58% 50% at 52% 44%, oklch(48.1% 0.247 267 / 0.5), transparent 76%),
-      var(--color-night);
+    background: var(--color-night);
   }
   @media (min-width: 1024px) {
     .stage-col {
@@ -588,6 +677,7 @@
   }
   /* Where the reader is: the four steps, the current one in lime. */
   .stage-chips {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     gap: 0.375rem;
@@ -881,11 +971,9 @@
     color: var(--color-fg-muted);
   }
 
-  /* ── The last call, on the blue ── */
+  /* ── The last call, on the sky: dawn at its foot ── */
   .cta-band {
-    background:
-      radial-gradient(70% 90% at 50% 0%, oklch(48.1% 0.247 267 / 0.55), transparent 80%),
-      var(--color-night);
+    background: var(--color-night);
   }
   .cta-title {
     --title-tracking: -0.025em;

@@ -1,6 +1,38 @@
 # Septune, direction artistique
 
-## Retouche du 2026-11-02 : poussière de galaxie et bleu nuit (en vigueur)
+## 2026-11-02, après-midi : le ciel en dégradé et la galaxie (en vigueur)
+
+Décisions, recherche et mesures : [ADR 0008](adr/0008-ciel-en-degrade-galaxie-interactive.md).
+Cette version reprend la retouche du matin, décrite juste dessous ; deux points en changent : le
+bleu nuit uni devient un ciel, et le globe devient une galaxie.
+
+**Mot de ton : le ciel.** Une seule lumière, posée sur toute la page.
+
+- **Le dégradé** (`.sky-field`). Un seul champ pour les trois scènes : le hero, le panneau des
+  étapes et le dernier appel.
+  - **Les couleurs.** Un bleu profond `#172793` en haut, l'outremer, puis un bleu électrique à
+    l'horizon.
+  - **La lumière.** Une ligne fine de lumière au cœur vert-jaune au pied de chaque scène,
+    l'aube là où le ciel rencontre la page ; et des orbites autour de la galaxie.
+  - **Le texte** ne se trouve que là où le champ reste sous oklch 50 %.
+  - **Le ciel ne bouge pas** : c'est la galaxie qui porte le mouvement.
+- **Le hero : la galaxie de septune.dev.**
+  - **Le contenu.** Ses 93 vraies pages en tuiles, sur un disque qui tourne et qui prend
+    toute la largeur.
+  - **Au curseur :**
+    - le disque penche vers lui ;
+    - les pages sous le curseur se soulèvent ;
+    - leurs chemins s'affichent.
+  - **Sans curseur,** elle lit une page à la fois, de l'accueil vers les bras.
+  - **Les mots** du hero sont posés dans des clairières.
+- **Les étapes.** D'une étape à l'autre, les points se réorganisent : ils vont de la figure qui
+  part à celle qui arrive, et aucune figure ne disparaît. Les cases portent leurs mots :
+  - les noms des pages du crawl ;
+  - le statut des pages et la page retenue ;
+  - le vrai code du fichier ;
+  - les sites surveillés.
+
+## Retouche du 2026-11-02, matin : poussière de galaxie et bleu nuit
 
 Décisions et mesures : [ADR 0007](adr/0007-poussiere-de-galaxie-et-bleu-nuit.md). Elle complète la
 refonte de la veille, décrite juste dessous, sans changer sa composition ni ses mouvements.

@@ -1,4 +1,4 @@
-import { FIGURE, SITE_TIERS, TREE_PAGES } from "./structures";
+import { FIGURE, GALAXY_TILT, SITE_TIERS, TREE_PAGES, crawlOrder } from "./structures";
 import { PRICING_TIERS } from "@/lib/pricing";
 
 /** The homepage steps that have a figure, in page order. */
@@ -25,8 +25,8 @@ export type Scene = {
  * 2026-10-31: replaying is friction).
  */
 export const SCENES: Record<Step, Scene> = {
-  // A site's pages around the globe, turning; a scan ring sweeps them.
-  hero: { sid: FIGURE.globe, story: 0, state: () => 0, rotY: 0, rotX: 0.3 },
+  // septune.dev's 93 pages as a galaxy, turning; it reads one page at a time, and the pages under the cursor.
+  hero: { sid: FIGURE.galaxy, story: 0, state: () => 0, rotY: 0, rotX: GALAXY_TILT },
   // septune.dev's own 93 pages, read from the home page down.
   read: { sid: FIGURE.tree, story: 6.5, state: (s) => -0.03 + s * 1.08, rotY: -0.1, rotX: 0.05 },
   // Pages fall through the check; the one that would leave Google lands on it and stays.
@@ -37,9 +37,6 @@ export const SCENES: Record<Step, Scene> = {
   watch: { sid: FIGURE.sites, story: 0, state: (_s, tier) => SITE_TIERS[tier] ?? SITE_TIERS[0]!, rotY: 0.2, rotX: -0.12 },
 };
 
-/** The tree's crawl order per page, as structures.ts lays it out: home, 16 linked pages, 76 deeper. */
-const treeOrder = (i: number) => (i === 0 ? 0 : i <= 16 ? 0.04 + ((i - 1) / 16) * 0.16 : 0.24 + ((i - 17) / 76) * 0.76);
-
 /**
  * What the step's readout says at a point of its story. It reads the same
  * state as the particles, so the words and the figure never disagree; the
@@ -49,7 +46,7 @@ export const READOUTS: Partial<Record<Step, (s: number, tier: number) => string>
   read: (s) => {
     const front = SCENES.read.state(s, 0);
     let n = 0;
-    for (let i = 0; i < TREE_PAGES; i++) if (treeOrder(i) <= front) n++;
+    for (let i = 0; i < TREE_PAGES; i++) if (crawlOrder(i) <= front) n++;
     if (n === 0) return "the crawl starts at the home page";
     return n >= TREE_PAGES ? `${TREE_PAGES} pages read in 8 seconds` : `${n} of ${TREE_PAGES} pages read`;
   },
