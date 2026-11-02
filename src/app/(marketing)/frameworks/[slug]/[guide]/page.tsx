@@ -11,6 +11,7 @@ import { FIXABLE_RULE_IDS } from "@/lib/audit/deterministic-fix";
 import { firstSentence, getRulePage } from "@/lib/audit/rule-docs";
 import { getFramework } from "@/lib/seo/content";
 import { GUIDES, getGuide, guidesFor } from "@/lib/seo/guides";
+import { nearestTo } from "@/lib/seo/related";
 
 export function generateStaticParams() {
   return GUIDES.map((g) => ({ slug: g.framework, guide: g.slug }));
@@ -38,6 +39,9 @@ export default async function GuidePage({ params }: { params: Params }) {
   const path = `/frameworks/${guide.framework}/${guide.slug}`;
   const rules = guide.rules.map((id) => getRulePage(id)!);
   const others = guidesFor(guide.framework).filter((g) => g.slug !== guide.slug);
+  // The nearest pages elsewhere on the site, minus those already listed.
+  const listed = new Set([...guide.rules.map((id) => `/docs/issues/${id}`), ...others.map((g) => `/frameworks/${g.framework}/${g.slug}`)]);
+  const related = nearestTo(`${guide.framework}/${guide.slug}`).filter((r) => !listed.has(r.path));
 
   return (
     <>
@@ -111,6 +115,20 @@ export default async function GuidePage({ params }: { params: Params }) {
                 <li key={g.slug}>
                   <Link href={`/frameworks/${g.framework}/${g.slug}`} className={PROSE_LINK}>
                     {g.h1}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </ProseBlock>
+        )}
+
+        {related.length > 0 && (
+          <ProseBlock heading="Related pages">
+            <ul className="space-y-2">
+              {related.map((r) => (
+                <li key={r.path}>
+                  <Link href={r.path} className={PROSE_LINK}>
+                    {r.title}
                   </Link>
                 </li>
               ))}

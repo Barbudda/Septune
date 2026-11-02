@@ -1,5 +1,6 @@
 import { config } from "@/lib/config";
 import { FRAMEWORK_PAGES } from "@/lib/seo/content";
+import { HUBS, topicPath, topicsIn, type TopicHub } from "@/lib/seo/topics";
 import { BILLING_OPEN, PRICING_TIERS } from "@/lib/pricing";
 
 /**
@@ -33,6 +34,15 @@ export function GET() {
     ...FRAMEWORK_PAGES.map((f) => `- [Technical SEO for ${f.name}](${u(`/frameworks/${f.slug}`)}): ${f.metaApi}, sitemaps, robots.txt and canonicals.`),
     `- [Changelog](${u("/changelog")}): what changed, release by release.`,
     "",
+    ...(Object.keys(HUBS) as TopicHub[])
+      .filter((h) => topicsIn(h).length > 0)
+      .flatMap((h) => [
+        `## ${HUBS[h].name}`,
+        "",
+        `- [${HUBS[h].title}](${u(`/${h}`)}): ${HUBS[h].description}`,
+        ...topicsIn(h).map((t) => `- [${t.h1}](${u(topicPath(t))}): ${t.description}`),
+        "",
+      ]),
     "## Open source",
     "",
     "- [septune on GitHub](https://github.com/Barbudda/rankforge-cli): the CLI, the GitHub Action, the MCP server and the Claude Code plugin, MIT-licensed.",

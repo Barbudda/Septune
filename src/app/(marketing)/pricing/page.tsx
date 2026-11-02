@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PricingSection } from "@/components/marketing/pricing";
 import { ComparisonSection } from "@/components/marketing/sections";
 import { FaqSection } from "@/components/marketing/faq";
@@ -54,6 +55,16 @@ export default function PricingPage() {
         </div>
       </section>
       <PricingSection standalone />
+      <p className="container-rf -mt-6 pb-10 text-center text-sm text-fg-muted">
+        What the pull-request gate compares, page by page:{" "}
+        <Link
+          href="/guides/seo-regression-testing"
+          className="text-fg underline decoration-ultramarine/40 underline-offset-4 transition-colors hover:text-ultramarine"
+        >
+          SEO regression testing, preview against production
+        </Link>
+        .
+      </p>
       <ComparisonSection />
       <FaqSection items={PRICING_FAQS} title="Pricing questions" />
       <FinalCta />

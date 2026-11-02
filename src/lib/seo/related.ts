@@ -1,6 +1,7 @@
 import { embed, cosine } from "@/lib/brain/embed";
 import { RULE_PAGES, pageTitle, type RulePage } from "@/lib/audit/rule-docs";
 import { GUIDES, type Guide } from "./guides";
+import { TOPICS, topicPath, type TopicPage } from "./topics";
 
 /** A page another page can link to as related. */
 export type RelatedLink = { path: string; title: string };
@@ -21,7 +22,7 @@ const ruleText = (r: RulePage) =>
     r.verify,
   ].join(" ");
 
-const guideText = (g: Guide) =>
+const guideText = (g: Guide | TopicPage) =>
   [
     g.title,
     g.h1,
@@ -38,24 +39,37 @@ const guideText = (g: Guide) =>
 const DOCS: Doc[] = [
   ...RULE_PAGES.map((r) => ({ id: r.id, path: `/docs/issues/${r.id}`, title: r.title, vector: embed(ruleText(r)) })),
   ...GUIDES.map((g) => ({ id: `${g.framework}/${g.slug}`, path: `/frameworks/${g.framework}/${g.slug}`, title: g.h1, vector: embed(guideText(g)) })),
+  ...TOPICS.map((t) => ({ id: topicPath(t), path: topicPath(t), title: t.h1, vector: embed(guideText(t)) })),
 ];
 
 /**
- * The pages closest in topic to this check page, among the other checks and
- * the guides: what Septune's own internal-link check expects it to link to
- * (it suggests a page's three nearest pages when they aren't linked). Five,
- * because the crawl reads the whole rendered page and ranks a little
- * differently from this text.
+ * The pages closest in topic to this one, among the checks, the framework
+ * guides and the topic pages: what Septune's own internal-link check expects
+ * it to link to (it suggests a page's three nearest pages when they aren't
+ * linked). Seven, because the crawl reads the whole rendered page and ranks a
+ * little differently from this text. `id` is a rule id, `<framework>/<slug>`
+ * for a guide, or a topic page's path.
  */
-export function nearestTo(ruleId: string, count = 5): RelatedLink[] {
-  const self = DOCS.find((d) => d.id === ruleId);
+export function nearestTo(id: string, count = 7): RelatedLink[] {
+  const self = DOCS.find((d) => d.id === id);
   if (!self) return [];
-  return DOCS.filter((d) => d !== self)
+  const near = DOCS.filter((d) => d !== self)
     .map((d) => ({ d, sim: cosine(self.vector, d.vector) }))
     .sort((a, b) => b.sim - a.sim)
     .slice(0, count)
-    .map(({ d }) => ({ path: d.path, title: d.title }));
+    .map(({ d }) => d);
+  const extra = (ALSO_RELATED[self.path] ?? []).map((path) => DOCS.find((d) => d.path === path)!).filter((d) => !near.includes(d));
+  return [...near, ...extra].map((d) => ({ path: d.path, title: d.title }));
 }
+
+/**
+ * Pairs the crawl ranks among a page's three nearest and this text doesn't,
+ * from Septune's audit of the local build on 2026-11-02 (143 pages).
+ */
+const ALSO_RELATED: Record<string, string[]> = {
+  "/docs/issues/indexing-robots-format": ["/ai-crawlers/gptbot"],
+  "/docs/issues/indexing-https-certificate": ["/search-console/blocked-by-robots-txt"],
+};
 
 /** The guides that walk through this check for one framework. */
 export function guidesForRule(ruleId: string): RelatedLink[] {

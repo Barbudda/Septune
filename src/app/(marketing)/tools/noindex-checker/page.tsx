@@ -96,7 +96,15 @@ export default function NoindexCheckerPage() {
             <p className="mt-3 text-fg-muted">
               This checker looks at one page, once. Septune checks every page of a pull request&apos;s preview against
               production and fails the check when a page would turn noindex, then watches the live site every day.
-              Start with the{" "}
+              To build the same gate yourself, see{" "}
+              <Link href="/guides/seo-checks-in-ci" className={link}>
+                SEO checks in CI
+              </Link>{" "}
+              and{" "}
+              <Link href="/guides/seo-regression-testing" className={link}>
+                SEO regression testing
+              </Link>
+              . Start with the{" "}
               <Link href="/audit" className={link}>
                 free audit
               </Link>

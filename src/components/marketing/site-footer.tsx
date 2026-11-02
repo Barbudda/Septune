@@ -27,6 +27,15 @@ const COLUMNS = [
     ],
   },
   {
+    title: "Guides",
+    links: [
+      { href: "/guides", label: "SEO guides" },
+      { href: "/hosting", label: "SEO by host" },
+      { href: "/search-console", label: "Search Console statuses" },
+      { href: "/ai-crawlers", label: "AI crawlers" },
+    ],
+  },
+  {
     title: "Resources",
     links: [
       { href: "/audit", label: "Free SEO audit" },
@@ -45,7 +54,7 @@ export function SiteFooter() {
   return (
     <footer className="relative z-10 overflow-hidden border-t border-border bg-bg-soft">
       <div className="container-rf relative py-14">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-sm text-fg-muted">

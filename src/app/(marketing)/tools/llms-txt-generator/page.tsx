@@ -76,7 +76,12 @@ export default function LlmsTxtGeneratorPage() {
                   llmstxt.org
                 </a>
                 : the site&apos;s name as a heading, a one-line summary, then links to the pages that matter, each with
-                a short description. It gives AI tools a clean map of the site instead of navigation and markup.
+                a short description. It gives AI tools a clean map of the site instead of navigation and markup. Real
+                files from Svelte, Cloudflare and Stripe are in the{" "}
+                <Link href="/guides/llms-txt-examples" className={link}>
+                  llms.txt examples guide
+                </Link>
+                .
               </p>
             </div>
             <div>

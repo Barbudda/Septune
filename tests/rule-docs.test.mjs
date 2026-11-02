@@ -17,7 +17,7 @@ before(async () => {
   await build({
     stdin: {
       contents:
-        'export * from "./src/lib/audit/rule-docs.ts"; export { RULE_CATALOG } from "./src/lib/audit/catalog.ts"; export { RULE_DOC_DATA } from "./src/lib/audit/rule-docs.data.ts"; export { FIXABLE_RULE_IDS } from "./src/lib/audit/deterministic-fix.ts"; export { GUIDES } from "./src/lib/seo/guides.ts"; export { FRAMEWORK_PAGES } from "./src/lib/seo/content.ts";',
+        'export * from "./src/lib/audit/rule-docs.ts"; export { RULE_CATALOG } from "./src/lib/audit/catalog.ts"; export { RULE_DOC_DATA } from "./src/lib/audit/rule-docs.data.ts"; export { FIXABLE_RULE_IDS } from "./src/lib/audit/deterministic-fix.ts"; export { GUIDES } from "./src/lib/seo/guides.ts"; export { FRAMEWORK_PAGES } from "./src/lib/seo/content.ts"; export { TOPICS, HUBS } from "./src/lib/seo/topics/index.ts";',
       resolveDir: ROOT,
       loader: "ts",
     },
@@ -171,15 +171,58 @@ test("every guide fits Septune's own metadata checks and cites dated sources", (
   }
 });
 
-test("internal links in guides and framework sections point at real pages", () => {
+// Topic pages (/hosting, /guides, /search-console, /ai-crawlers): the guides'
+// bar, plus no sentence repeated from another page, so Septune's own
+// near-duplicate check has nothing to say about them.
+test("every topic page fits Septune's own metadata checks and cites dated sources", () => {
+  const rules = new Set(m.RULE_CATALOG.map((r) => r.id));
+  const keys = new Set();
+  const sentences = new Map();
+  for (const t of m.TOPICS) {
+    const key = `/${t.hub}/${t.slug}`;
+    assert.ok(!keys.has(key), `${key} twice`);
+    keys.add(key);
+    assert.ok(m.HUBS[t.hub], `${key}: unknown section`);
+    assert.match(t.slug, /^[a-z0-9]+(-[a-z0-9]+)*$/, `${key}: slug`);
+    assert.ok(`${t.title} · Septune`.length <= 65, `${key}: title too long (${t.title.length})`);
+    assert.ok(t.description.length <= 155, `${key}: description ${t.description.length} chars`);
+    const words = t.answer.split(/\s+/).length;
+    assert.ok(words >= 40 && words <= 70, `${key}: answer has ${words} words`);
+    assert.ok(t.sections.length >= 3, `${key}: fewer than 3 sections`);
+    assert.ok(t.rules.length >= 1 && t.rules.every((r) => rules.has(r)), `${key}: unknown rule`);
+    assert.ok(t.sources.length >= 2 && t.sources.every((x) => /^https:\/\//.test(x.url) && /^\d{4}-\d{2}-\d{2}$/.test(x.read)), `${key}: sources`);
+    assert.match(t.published, /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(t.updated, /^\d{4}-\d{2}-\d{2}$/);
+    for (const text of guideText(t)) {
+      assert.ok(!text.includes("—"), `${key}: em dash in "${text.slice(0, 60)}"`);
+      assert.ok(!/npx\s+septune/.test(text), `${key}: npx septune`);
+      assert.ok(!/lorem ipsum/i.test(text), `${key}: placeholder text`);
+    }
+    for (const b of t.sections.flatMap((s) => s.blocks)) {
+      for (const text of b.kind === "p" ? [b.text] : b.kind === "list" ? b.items : []) {
+        for (const sentence of text.split(/(?<=[.!?])\s+/).filter((x) => x.split(/\s+/).length >= 8)) {
+          const seen = sentences.get(sentence);
+          assert.ok(!seen || seen === key, `${key} repeats a sentence of ${seen}: "${sentence.slice(0, 70)}"`);
+          sentences.set(sentence, key);
+        }
+      }
+    }
+  }
+});
+
+test("internal links in guides, topics and framework sections point at real pages", () => {
   const pages = new Set([
+    "/", "/audit", "/pricing", "/docs", "/docs/agent", "/changelog",
+    "/tools/noindex-checker", "/tools/llms-txt-generator",
     ...m.FRAMEWORK_PAGES.map((f) => `/frameworks/${f.slug}`),
     ...m.GUIDES.map((g) => `/frameworks/${g.framework}/${g.slug}`),
     ...m.RULE_CATALOG.map((r) => `/docs/issues/${r.id}`),
+    ...Object.keys(m.HUBS).map((h) => `/${h}`),
+    ...m.TOPICS.map((t) => `/${t.hub}/${t.slug}`),
   ]);
-  const blocks = [...m.GUIDES.flatMap((g) => g.sections), ...m.FRAMEWORK_PAGES.flatMap((f) => f.sections ?? [])].flatMap((s) => s.blocks);
+  const blocks = [...m.GUIDES.flatMap((g) => g.sections), ...m.TOPICS.flatMap((t) => t.sections), ...m.FRAMEWORK_PAGES.flatMap((f) => f.sections ?? [])].flatMap((s) => s.blocks);
   const text = blocks.flatMap((b) => (b.kind === "p" ? [b.text] : b.kind === "list" ? b.items : [])).join("\n");
   const links = [...text.matchAll(/\]\((\/[^)]+)\)/g)].map((x) => x[1]);
   assert.ok(links.length > 0);
-  for (const href of links) assert.ok(pages.has(href), `dead internal link ${href}`);
+  for (const href of links) assert.ok(pages.has(href.split("#")[0]), `dead internal link ${href}`);
 });
