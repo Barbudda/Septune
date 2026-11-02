@@ -50,18 +50,20 @@
   --color-molten-deep: #a8380a;
 
   /* Marketing palette since the 2026-11-01 evening redesign (docs/DESIGN.md,
-     ADR 0006): two plain colours that go together, paper and ultramarine,
-     and one vivid, lime. Contrast, computed: navy on paper 15.6:1,
-     ultramarine on paper 6.5:1, white on ultramarine 7.1:1, lime on
-     ultramarine 5.6:1, navy on lime 13.5:1. */
-  --color-paper: oklch(97% 0.008 271.3); /* #f3f5fb */
-  --color-paper-deep: oklch(94.8% 0.014 264.5); /* #e9eef8 */
+     ADR 0006, ADR 0007): two plain colours that go together, paper and blue,
+     and one vivid, lime. The stages are a night blue lit with ultramarine,
+     so the figures' dust glows on them (2026-11-02, "assombris un petit
+     peu"). Contrast, computed: navy on paper 14.1:1, ultramarine on paper
+     5.9:1, white on night 14:1, lime on night 11.1:1, navy on lime 13.4:1. */
+  --color-paper: oklch(93.8% 0.016 268); /* #e6eaf6 */
+  --color-paper-deep: oklch(90.6% 0.022 267); /* #d9e0ef */
   --color-navy: oklch(23.2% 0.073 267.1); /* #0e1a3f */
+  --color-night: oklch(30.5% 0.15 267.5); /* #102079 */
   --color-ultramarine: oklch(48.1% 0.247 267); /* #2440e6 */
   --color-ultramarine-deep: oklch(41% 0.208 267); /* #1b33b8 */
   --color-lime: oklch(91.1% 0.195 118); /* #d7f23c */
-  --color-on-blue: oklch(92.7% 0.035 273.3); /* #dfe6ff, 5.7:1 on ultramarine */
-  --color-on-blue-muted: oklch(87.6% 0.061 273.8); /* #c9d4ff, 4.9:1 on ultramarine */
+  --color-on-blue: oklch(92.7% 0.035 273.3); /* #dfe6ff, 11.2:1 on night */
+  --color-on-blue-muted: oklch(87.6% 0.061 273.8); /* #c9d4ff, 9.6:1 on night */
 
   /* Fonts (wired by next/font in layout.tsx) */
   --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
@@ -312,9 +314,9 @@
      Two plain colours that go together, paper and ultramarine, and one
      vivid, lime. The marketing layout redefines the colour tokens: every
      utility under .forge-ui resolves to them, while the app keeps its own.
-     Text contrast on paper, computed: fg 15.6:1, muted 8.4:1, subtle 5.6:1
-     (5.2:1 on paper-deep), links in ultramarine 6.5:1, signal 5:1, amber
-     4.6:1, danger 5.2:1. Lime is never text on paper: it is a fill under navy
+     Text contrast on paper, computed: fg 14.1:1, muted 7.7:1, subtle 5.6:1
+     (5.1:1 on paper-deep), links in ultramarine 5.9:1, signal 5.1:1, amber
+     5.5:1, danger 5.9:1. Lime is never text on paper: it is a fill under navy
      text (13.5:1), or text on the blue (5.6:1). */
   /* The support chat is mounted next to the layout, not inside it: it takes
      the same tokens through the sibling selector. Not body:has(.forge-ui) …:
@@ -324,15 +326,15 @@
   .forge-ui ~ .support-chat {
     --color-bg: var(--color-paper);
     --color-bg-soft: var(--color-paper-deep);
-    --color-surface: oklch(100% 0 0);
-    --color-surface-2: oklch(100% 0 0 / 0.7);
-    --color-elevated: oklch(100% 0 0);
+    --color-surface: oklch(98.4% 0.006 270);
+    --color-surface-2: oklch(98.4% 0.006 270 / 0.7);
+    --color-elevated: oklch(98.4% 0.006 270);
     --color-border: oklch(23.2% 0.073 267 / 0.14);
     --color-border-soft: oklch(23.2% 0.073 267 / 0.08);
     --color-code: var(--color-paper-deep);
     --color-fg: var(--color-navy);
     --color-fg-muted: oklch(40.2% 0.06 267.7);
-    --color-fg-subtle: oklch(49.7% 0.049 267.1);
+    --color-fg-subtle: oklch(47.5% 0.05 267.1);
     --color-ink: var(--color-navy);
     /* Primary actions are lime with navy text; links and labels ultramarine. */
     --color-molten: var(--color-lime);
@@ -342,14 +344,14 @@
     --color-verdigris-soft: var(--color-ultramarine);
     --color-bone: oklch(100% 0 0);
     --color-ink-on-bone: var(--color-navy);
-    --color-signal: oklch(51.1% 0.124 152.9);
+    --color-signal: oklch(47% 0.12 152.9);
     --color-cyan: oklch(50.9% 0.087 215.1);
     --color-amber: oklch(49% 0.13 48);
     --color-danger: oklch(48.5% 0.18 27);
     --color-critical: oklch(48.5% 0.18 27);
     --color-high: oklch(49% 0.13 48);
     --color-medium: oklch(49% 0.13 48);
-    --color-low: oklch(51.1% 0.124 152.9);
+    --color-low: oklch(47% 0.12 152.9);
   }
   .forge-ui {
     color-scheme: light;
@@ -390,7 +392,7 @@
     --color-fg-subtle: var(--color-on-blue-muted);
     --color-border: oklch(100% 0 0 / 0.28);
     --color-code: oklch(100% 0 0 / 0.12);
-    --color-bg: var(--color-ultramarine);
+    --color-bg: var(--color-night);
     --title-em: var(--color-lime);
     color: var(--color-fg);
   }
@@ -400,11 +402,12 @@
     outline-color: var(--color-lime);
   }
 
-  /* ── Hero: the first stage. A pool of lighter blue where the globe turns. */
+  /* ── Hero: the first stage. Night blue, and a pool of ultramarine where
+     the globe turns, the way a nebula lights the sky behind it. */
   .hero {
     background:
-      radial-gradient(62% 52% at 50% 36%, oklch(55% 0.235 268 / 0.85), transparent 72%),
-      var(--color-ultramarine);
+      radial-gradient(54% 48% at 50% 36%, oklch(48.1% 0.247 267 / 0.55), transparent 74%),
+      var(--color-night);
   }
   /* The figure's box: in the flow above the words, so it only ever gets the
      room they leave (at least a third of the screen). */
@@ -568,8 +571,8 @@
     flex-direction: column;
     border-radius: 22px;
     background:
-      radial-gradient(64% 54% at 52% 44%, oklch(55% 0.235 268 / 0.75), transparent 75%),
-      var(--color-ultramarine);
+      radial-gradient(58% 50% at 52% 44%, oklch(48.1% 0.247 267 / 0.5), transparent 76%),
+      var(--color-night);
   }
   @media (min-width: 1024px) {
     .stage-col {
@@ -880,7 +883,9 @@
 
   /* ── The last call, on the blue ── */
   .cta-band {
-    background: var(--color-ultramarine);
+    background:
+      radial-gradient(70% 90% at 50% 0%, oklch(48.1% 0.247 267 / 0.55), transparent 80%),
+      var(--color-night);
   }
   .cta-title {
     --title-tracking: -0.025em;
@@ -1002,7 +1007,7 @@
    alone is cheap; followed by a descendant selector it restyled the whole
    page on every text change, see .forge-ui ~ .support-chat.) */
 body:has(.forge-ui) {
-  background-color: #f3f5fb;
+  background-color: #e6eaf6;
 }
 html:has(.forge-ui) {
   scroll-padding-top: 6rem;

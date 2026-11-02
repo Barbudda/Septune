@@ -50,7 +50,8 @@ export function ForgeField() {
 
     const motion = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const compact = window.matchMedia("(max-width: 1023px), (pointer: coarse)").matches;
-    const side = compact ? 128 : 256;
+    // Galaxy dust wants many fine points: 102 400 on large screens, 25 600 on phones.
+    const side = compact ? 160 : 320;
     const dpr = Math.min(window.devicePixelRatio || 1, compact ? 1.5 : 2);
 
     const steps: Live[] = Array.from(document.querySelectorAll<HTMLElement>("[data-forge-step]")).flatMap((el) => {

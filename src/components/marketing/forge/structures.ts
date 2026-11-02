@@ -13,6 +13,8 @@
  *   a = start xyz, flow speed (fraction of its segment per second; 0 = still)
  *   b = end xyz, phase along the segment
  *   c = order (crawl order, tier, token tone), kind, size, extra
+ * A kind with a quarter added (FACE) marks the faint dust that fills a page
+ * card: it behaves as its kind and the shader dims it.
  *
  * Records are sorted along a Hilbert curve of their place in the figure, so
  * particle i sits in the same region of every figure and a morph moves each
@@ -22,6 +24,7 @@
 export const FIGURE = { globe: 0, tree: 1, gate: 2, code: 3, sites: 4 } as const;
 
 export const KIND = { line: 0, text: 1, dust: 2, accent: 3, flow: 4, shift: 5, title: 6, scan: 7, held: 8, gate: 9 } as const;
+export const FACE = 0.25;
 
 export type Structure = {
   a: Float32Array;
@@ -164,8 +167,9 @@ function put(w: Writer, r: () => number, p: V3, ink: Ink, motion: Motion | undef
 }
 
 /**
- * A page card: outline, a title line and a few lines of text, inside a plane.
- * `lines` are the text lines' lengths as a fraction of the inner width.
+ * A page card: a haze of dust over its face, outline, a title line and a few
+ * lines of text, inside a plane. `lines` are the text lines' lengths as a
+ * fraction of the inner width.
  */
 function card(
   w: Writer,
@@ -173,10 +177,16 @@ function card(
   f: Plane,
   W: number,
   H: number,
-  n: number,
+  total: number,
   opts: { ink: Ink; text?: Ink; title?: Ink; lines?: number[]; rad?: number; motion?: Motion; bars?: boolean },
 ) {
   const lines = opts.lines ?? [0.82, 0.64, 0.74];
+  // The face: a quarter of the card's points, spread evenly inside its edge
+  // (galaxy dust, Hugo 2026-11-02: the page reads as a lit tile, not a sketch).
+  const nFace = Math.round(total * 0.26);
+  const faceInk = { ...opts.ink, kind: opts.ink.kind + FACE, size: opts.ink.size * 0.85 };
+  for (let k = 0; k < nFace; k++) put(w, r, on(f, (r() - 0.5) * W * 0.94, (r() - 0.5) * H * 0.94), faceInk, opts.motion, 0.004);
+  const n = total - nFace;
   const rad = opts.rad ?? Math.min(W, H) * 0.09;
   const pad = W * 0.16;
   const inner = W - 2 * pad;

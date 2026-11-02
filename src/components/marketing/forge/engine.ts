@@ -132,6 +132,9 @@ export function createForge(
     width: s.width,
     height: s.height,
   }));
+  // Upload every figure now, at start-up, rather than on its first transition:
+  // with 102 400 points that is about 25 MB, a visible hitch mid-scroll.
+  textures.forEach((t) => renderer.initTexture(t));
 
   // Particles start as the first figure blown wide open; it gathers on load.
   const first = built[0]!;
@@ -183,10 +186,10 @@ export function createForge(
   const pointsU = {
     ...slots,
     uPos: tex(pos.texture),
-    uSize: { value: mobile ? 2.6 : 2.1 },
+    uSize: { value: mobile ? 2.4 : 1.9 },
     uDPR: { value: opts.dpr },
     uOpacity: { value: 1 },
-    uDensity: { value: mobile ? 0.9 : 0.75 },
+    uDensity: { value: mobile ? 0.85 : 0.74 },
   };
   // Premultiplied additive: colour x coverage and coverage add up (ONE, ONE); the tone pass divides.
   const pointsMat = new THREE.ShaderMaterial({
@@ -209,6 +212,8 @@ export function createForge(
   const tone = material(TONE_FRAG, {
     uTex: tex(hdr.texture),
     uExposure: { value: 1.25 },
+    uGlow: { value: 0.8 },
+    uTexel: { value: new THREE.Vector2(1, 1) },
     uView: { value: new THREE.Vector2(1, 1) },
     uRect: { value: rects },
     uRadius: { value: [0, 0, 0, 0] },
@@ -224,7 +229,10 @@ export function createForge(
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
     tone.u.uView.value.set(W, H);
-    hdr.setSize(Math.max(1, Math.floor(W * opts.dpr)), Math.max(1, Math.floor(H * opts.dpr)));
+    const hw = Math.max(1, Math.floor(W * opts.dpr));
+    const hh = Math.max(1, Math.floor(H * opts.dpr));
+    hdr.setSize(hw, hh);
+    tone.u.uTexel.value.set(1 / hw, 1 / hh);
   };
   resize();
   window.addEventListener("resize", resize);

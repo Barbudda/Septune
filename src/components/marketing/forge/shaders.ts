@@ -4,11 +4,18 @@
  * next on a clock. Compiled by three's ShaderMaterial (WebGL2), which maps
  * texture2D / gl_FragColor.
  *
- * Light on the blue stage: the points add up their colour weighted by their
- * coverage, the tone pass divides it back out and rolls the coverage off, and
- * writes premultiplied colour the canvas composites over the page. It also
- * masks the picture to the stage regions, so nothing is ever drawn on the
- * page's paper or under its text.
+ * The figures are drawn in galaxy dust (Hugo, 2026-11-02, after the blue
+ * tree of his reference video): each point keeps a place of its own around
+ * the line it draws and turns slowly about it, most of them faint, a few
+ * bright, one in thirty a star that glints. The figures themselves, and how
+ * they move, are the same.
+ *
+ * Light on the night-blue stage: the points add up their colour weighted by
+ * their coverage, the tone pass spreads a little of it around as a glow,
+ * divides the colour back out, whitens it where the dust is thick and rolls
+ * the coverage off, and writes premultiplied colour the canvas composites
+ * over the page. It also masks the picture to the stage regions, so nothing
+ * is ever drawn on the page's paper or under its text.
  */
 
 /** Full-screen pass: every simulation step renders one quad. */
@@ -27,11 +34,15 @@ void main() { gl_FragColor = texture2D(uSource, vUv); }`;
 /**
  * acc.rgb is the sum of colour x coverage, acc.a the sum of coverage: their
  * ratio is the exact palette colour, and 1 - exp(-a) turns piled-up points
- * into solid light instead of clipping. Outside every region nothing is kept.
+ * into solid light instead of clipping. Eight taps around the pixel, read
+ * with linear filtering, add a soft glow. Outside every region nothing is
+ * read or kept.
  */
 export const TONE_FRAG = /* glsl */ `
 uniform sampler2D uTex;
 uniform float uExposure;
+uniform float uGlow;
+uniform vec2 uTexel;
 uniform vec2 uView;
 uniform vec4 uRect[4];
 uniform float uRadius[4];
@@ -44,15 +55,28 @@ float roundRect(vec2 p, vec4 r, float rad) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rad;
 }
 void main() {
-  vec4 acc = texture2D(uTex, vUv);
-  float a = 1.0 - exp(-acc.a * uExposure);
-  vec3 c = acc.rgb / max(acc.a, 1e-4);
   vec2 px = vec2(vUv.x * uView.x, (1.0 - vUv.y) * uView.y);
   float m = 0.0;
   for (int i = 0; i < 4; i++) {
     if (i >= uCount) break;
     m = max(m, clamp(0.5 - roundRect(px, uRect[i], uRadius[i]), 0.0, 1.0));
   }
+  if (m <= 0.0) {
+    gl_FragColor = vec4(0.0);
+    return;
+  }
+  vec4 acc = texture2D(uTex, vUv);
+  vec2 n = uTexel * 2.5;
+  vec2 f = uTexel * 7.0;
+  vec4 glow = texture2D(uTex, vUv + vec2(n.x, n.y)) + texture2D(uTex, vUv + vec2(-n.x, n.y))
+    + texture2D(uTex, vUv + vec2(n.x, -n.y)) + texture2D(uTex, vUv - n)
+    + 0.6 * (texture2D(uTex, vUv + vec2(f.x, 0.0)) + texture2D(uTex, vUv - vec2(f.x, 0.0))
+    + texture2D(uTex, vUv + vec2(0.0, f.y)) + texture2D(uTex, vUv - vec2(0.0, f.y)));
+  acc += glow * (uGlow / 6.4);
+  float a = 1.0 - exp(-acc.a * uExposure);
+  vec3 c = acc.rgb / max(acc.a, 1e-4);
+  // Where the dust is thick the light runs towards white, as in a nebula's core.
+  c = mix(c, vec3(0.95, 0.97, 1.0), 0.45 * smoothstep(1.5, 6.0, acc.a));
   a *= m;
   gl_FragColor = vec4(c * a, a);
 }`;
@@ -85,6 +109,21 @@ vec3 curlNoise(vec3 p, float t) {
  */
 const HOME = /* glsl */ `
 bool is(float kind, float k) { return abs(kind - k) < 0.5; }
+// More numbers per point than rnd holds: a hash of its four.
+float hash(float n) { return fract(sin(n) * 43758.5453); }
+float seedOf(vec4 rnd) { return rnd.x * 12.9898 + rnd.y * 78.233 + rnd.z * 37.719 + rnd.w * 4.581; }
+// Galaxy dust: how far a point keeps from the line it draws. Half of them
+// within a hair of it, one in ten out in the haze.
+float spreadOf(float s) {
+  float u = hash(s);
+  return 0.004 + 0.06 * u * u * u * u;
+}
+// Its place around the line: it turns slowly about it, in depth too.
+vec3 haze(float s, float t) {
+  float w = 0.25 + 0.35 * hash(s + 4.0);
+  vec3 ph = 6.2832 * vec3(hash(s + 1.0), hash(s + 2.0), hash(s + 3.0));
+  return spreadOf(s) * vec3(sin(t * w + ph.x), sin(t * w * 0.83 + ph.y), sin(t * w * 0.71 + ph.z));
+}
 // The height of the globe's scan ring on the unit sphere: a slow sweep pole to pole.
 float scanHeight(float t) { return sin(t * 0.3) * 0.9; }
 vec3 homeOf(vec4 a, vec4 b, vec4 c, float sid, vec4 st, vec4 rnd, float t, out float f) {
@@ -114,6 +153,7 @@ vec3 homeOf(vec4 a, vec4 b, vec4 c, float sid, vec4 st, vec4 rnd, float t, out f
     if (is(kind, 5.0)) p.y += c.w * smoothstep(0.45, 0.85, st.x);
   }
   if (is(kind, 2.0)) p += 0.05 * vec3(sin(t * 0.21 + rnd.x * 6.28), cos(t * 0.17 + rnd.y * 6.28), sin(t * 0.13 + rnd.z * 6.28));
+  else p += haze(seedOf(rnd), t);
   return p;
 }
 `;
@@ -193,10 +233,11 @@ void main() {
 
 /**
  * Each point reads its place from the simulation and its colour from what
- * it stands for in each of the two figures, mixed by its own progress.
- * Two tones on the blue, near-white and pale blue; the accent only where the
- * sentence puts the attention (the crawl front, the held page, the noindex
- * line, the check sweeping the watched sites, the globe's scan).
+ * it stands for in the figure it belongs to. Two tones on the night blue, a
+ * white running to cyan and an electric blue, each point a little different;
+ * the accent only where the sentence puts the attention (the crawl front,
+ * the held page, the noindex line, the check sweeping the watched sites, the
+ * globe's scan). Its brightness is its own, as in a star field.
  */
 export const POINTS_VERT = /* glsl */ `
 uniform sampler2D uPos;
@@ -222,8 +263,9 @@ varying vec4 vCol;
 ${HOME}
 ${PHASES}
 float bell(float x) { return exp(-x * x); }
-const vec3 INK = vec3(0.949, 0.961, 1.0);
-const vec3 SOFT = vec3(0.659, 0.729, 1.0);
+// The two tones, set per point in main(): a white running to cyan, an electric blue.
+vec3 INK;
+vec3 SOFT;
 const vec3 ACCENT = vec3(0.843, 0.949, 0.235);
 
 vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
@@ -235,7 +277,7 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
   float w = 1.0;
   if (is(kind, 1.0)) { col = SOFT; w = 0.62; }
   else if (is(kind, 6.0)) { w = 1.15; }
-  else if (is(kind, 2.0)) { col = SOFT; w = 0.2; }
+  else if (is(kind, 2.0)) { col = SOFT; w = 0.28; }
   if (sid < 0.5) {
     // Globe: the far side fades; the ring is the accent and lights the cards it passes.
     float face = smoothstep(-1.7, 1.5, p.z);
@@ -287,7 +329,7 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
     if (!is(kind, 2.0)) {
       float lit = step(order, st.x);
       col = mix(SOFT, col, lit);
-      w *= mix(0.24, 1.0, lit);
+      w *= mix(0.34, 1.0, lit);
       float sweep = -2.4 + mod(uTime * 0.55, 5.6);
       float band = bell((p.x - sweep) / 0.22) * lit;
       col = mix(col, ACCENT, band * 0.8);
@@ -298,6 +340,10 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
 }
 
 void main() {
+  float s = seedOf(rnd);
+  float hue = hash(s + 5.0);
+  INK = hue < 0.45 ? mix(vec3(0.94, 0.97, 1.0), vec3(0.7, 0.9, 1.0), hue * 2.2) : mix(vec3(0.5, 0.82, 1.0), vec3(0.42, 0.6, 1.0), (hue - 0.45) * 1.8);
+  SOFT = mix(vec3(0.3, 0.45, 1.0), vec3(0.4, 0.72, 1.0), hue * 0.7);
   vec4 state = texture2D(uPos, ref);
   vec4 c0 = texture2D(uC0, ref);
   vec4 c1 = texture2D(uC1, ref);
@@ -307,18 +353,28 @@ void main() {
   float k = state.w;
   // It wears the colours of the figure it belongs to: in between it is unseen.
   vec4 l = k < 0.5 ? l0 : l1;
+  // The dust filling a page card (a kind with a quarter added) is a faint haze.
+  float face = step(0.1, fract(k < 0.5 ? c0.y : c1.y));
+  l.a *= mix(1.0, 0.45, face);
   float shown = max(leaving(uMix), arriving(uMix, orderIn(p1, uSpan, rnd.w)));
   // A straggler still on its way stays dim until it lands.
   float away = length(state.xyz - mix(p0, p1, k));
   l.a *= shown * mix(1.0, 0.12, smoothstep(0.02, 0.25, away));
+  // The haze is fainter than the line it hangs around; most points are dim,
+  // a few bright, and the stars glint.
+  l.a *= mix(1.0, 0.4, smoothstep(0.008, 0.035, spreadOf(s)));
+  float g = hash(s + 6.0);
+  l.a *= 0.5 + 0.95 * g * g;
+  float star = step(0.967, hash(s + 7.0));
+  l.a *= 1.0 + star * (1.3 + 0.9 * sin(uTime * (1.1 + 2.2 * g) + g * 40.0));
   vCol = vec4(l.rgb, l.a * uOpacity);
 
   vec4 mv = modelViewMatrix * vec4(state.xyz, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uSize * uDPR * mix(c0.z, c1.z, k) * mix(0.75, 1.0, rnd.z) * (6.0 / -mv.z);
+  gl_PointSize = uSize * uDPR * mix(c0.z, c1.z, k) * mix(0.7, 1.05, rnd.z) * (1.0 + star * 1.5) * (6.0 / -mv.z);
 }`;
 
-/** A small round sprite, denser at its centre. */
+/** A small round sprite: a bright core in a soft falloff, like a star. */
 export const POINTS_FRAG = /* glsl */ `
 uniform float uDensity;
 varying vec4 vCol;
@@ -326,6 +382,6 @@ void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
   if (r2 > 1.0) discard;
-  float d = pow(1.0 - r2, 1.6) * vCol.a * uDensity;
+  float d = (0.55 * exp(-r2 * 7.0) + 0.45 * (1.0 - r2) * (1.0 - r2)) * vCol.a * uDensity;
   gl_FragColor = vec4(vCol.rgb * d, d);
 }`;

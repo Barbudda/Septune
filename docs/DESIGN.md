@@ -1,5 +1,24 @@
 # Septune, direction artistique
 
+## Retouche du 2026-11-02 : poussière de galaxie et bleu nuit (en vigueur)
+
+Décisions et mesures : [ADR 0007](adr/0007-poussiere-de-galaxie-et-bleu-nuit.md). Elle complète la
+refonte de la veille, décrite juste dessous, sans changer sa composition ni ses mouvements.
+
+Hugo : « assombris un petit peu le site », et refais les figures « en points de galaxie », comme
+l'arbre de points bleus de sa vidéo, en gardant leurs déplacements.
+
+- **Les scènes** passent au bleu nuit `#102079`, éclairé au centre d'une nappe d'outremer, à la
+  manière du ciel de la vidéo. L'outremer `#2440e6` reste la couleur des liens et des intitulés.
+- **Le papier** se fonce d'un cran : `#e6eaf6`, et `#d9e0ef` pour le papier profond. Les cartes
+  restent presque blanches (`#f8fafe`).
+- **Les figures** sont les mêmes pages, en poussière lumineuse :
+  - chaque point flotte autour de son trait, la plupart tout près, quelques-uns dans un halo ;
+  - beaucoup de points faibles, quelques brillants, et des étoiles qui scintillent ;
+  - un blanc qui tire vers le cyan et un bleu électrique, avec une lueur autour des traits ;
+  - la surface de chaque page est remplie d'une brume faible.
+- **Rien d'autre ne bouge** : mêmes figures, mêmes transitions en trois temps, mêmes histoires.
+
 ## Refonte du 2026-11-01 au soir : papier, outremer et vert-jaune (en vigueur sur le site marketing)
 
 Décisions, recherche et mesures : [ADR 0006](adr/0006-scene-bleue-figures-de-pages.md). Ce bloc
@@ -18,9 +37,10 @@ Retour de Hugo sur la version pétrole :
 
 - **Couleurs** (jetons oklch dans `@theme`, redéfinis sous `.forge-ui`, contrastes calculés en
   commentaire) :
-  - **le papier** `#f3f5fb` pour le fond des pages, jamais le blanc pur ;
+  - **le papier** `#f3f5fb` pour le fond des pages, jamais le blanc pur (`#e6eaf6` depuis le
+    2026-11-02) ;
   - **l'outremer** `#2440e6` pour les scènes (hero, panneau, cartes, dernier appel), les liens et
-    les intitulés ;
+    les intitulés (les scènes sont en bleu nuit `#102079` depuis le 2026-11-02) ;
   - **l'encre** bleu nuit `#0e1a3f` pour le texte, puis `#3a4769` et `#56627f` pour les textes
     secondaires ;
   - **le vert-jaune** `#d7f23c`, la seule couleur vive. Il marque l'action principale, la seconde
