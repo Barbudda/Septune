@@ -33,7 +33,7 @@ Retour de Hugo sur la version pétrole :
   - **Les quatre étapes** (01 Read, 02 Catch, 03 Fix, 04 Watch) sont faites ainsi :
     - **sur ordinateur,** le texte sur papier à gauche et un panneau bleu collant à droite. Les
       quatre étapes y sont en pastilles, l'étape en cours en vert-jaune ;
-    - **sur téléphone,** une carte bleue au-dessus de chaque étape.
+    - **sur téléphone,** un bandeau bleu collé sous la barre, le texte défilant dessous.
   - **Ensuite :**
     - le vrai rapport de Septune sur septune.dev ;
     - les questions sur papier ;
@@ -49,9 +49,14 @@ Retour de Hugo sur la version pétrole :
   Deux tons sur le bleu, presque blanc et bleu pâle ; le vert-jaune pour ce que la phrase
   désigne.
 - **Mouvement.**
-  - **Qui décide.** Le scroll choisit l'étape et une horloge joue : 1,8 s pour passer d'une figure
-    à l'autre, sur place, du haut vers le bas.
-  - **L'histoire de l'étape** se joue une fois, ensuite tout se tient.
+  - **Qui décide.** Le scroll choisit l'étape et une horloge joue la transition en 2 s :
+    - la figure présente s'efface ;
+    - les particules traversent sans être vues ;
+    - la suivante se dessine du haut vers le bas.
+
+    Jamais deux figures ensemble.
+  - **L'histoire de l'étape** se joue une fois, ensuite tout se tient. Seule exception : la
+    dernière étape, qui suit l'offre survolée (1, 5 ou 25 sites) et revient à l'offre gratuite.
   - **Les titres** sortent d'un flou lettre par lettre sur ordinateur, d'un bloc sur écran
     tactile.
   - **Pas d'effet parasite :** aucune rotation liée au scroll, pas de fluide sous la souris.

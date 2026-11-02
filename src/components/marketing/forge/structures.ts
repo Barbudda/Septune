@@ -531,11 +531,11 @@ function sites(count: number): Structure {
       const dy = row - 2;
       const ring = Math.abs(dx) + Math.abs(dy);
       const order = ring === 0 ? 0 : ring === 1 ? 0.12 : 0.3 + (Math.hypot(dx, dy) / 3) * 0.6 + r() * 0.02;
+      // Flat, with a 0.12 gap between windows: the three-quarter view comes from
+      // the scene's rotation, and no two windows ever touch.
       const x = dx * 0.68;
       const y = -dy * 0.56;
-      // A shallow curve, like a wall of screens.
-      const z = -0.16 * x * x;
-      card(w, r, FLAT(x, y, z), W, H, per, {
+      card(w, r, FLAT(x, y, 0), W, H, per, {
         ink: { order, kind: KIND.line, size: 1 },
         title: { order, kind: KIND.title, size: 1.05 },
         text: { order, kind: KIND.text, size: 0.9 },

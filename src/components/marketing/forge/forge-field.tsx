@@ -5,14 +5,17 @@ import type { Forge, ForgeFrame, ForgeRegion } from "./engine";
 import { READOUTS, SCENES, type Step } from "./scenes";
 
 /** Seconds for one figure to become the next, whatever the scroll speed. */
-const TRANSITION = 1.8;
-/** A step takes over when its top passes this fraction of the viewport. */
+const TRANSITION = 2;
+/**
+ * The point of the transition where the picture changes stage: the old
+ * figure has faded by then and the new one has not started to draw
+ * (PHASES in shaders.ts), so the jump is never seen.
+ */
+const SWAP = 0.42;
+/** On large screens a step takes over when its top passes this fraction of the viewport. */
 const ACTIVE_AT = 0.55;
 /** Room left around a figure inside its stage, as a fraction of the stage. */
 const INSET = 0.08;
-
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 type Box = ForgeFrame["box"];
 type Live = {
@@ -27,11 +30,11 @@ type Live = {
 
 /**
  * The homepage's WebGL layer. The scroll only chooses which step is being
- * read; a clock plays everything else: a figure turns into the next over
- * TRANSITION seconds, then the step's story plays once. Each figure sits in
- * its own stage (the hero, the panel beside the text, or a card on small
- * screens) and the canvas is masked to the stages on screen, so it never
- * draws over the page's text or paper.
+ * read; a clock plays everything else: the figure on screen fades, the next
+ * one draws itself in its own stage (TRANSITION seconds), then the step's
+ * story plays once. Stages are the hero and the blue panel beside the text
+ * (a band at the top on small screens); the canvas is masked to the stages
+ * on screen, so it never draws over the page's text or paper.
  *
  * Loaded after the page is idle so it never competes with the first paint;
  * without WebGL2 (or float targets) the page reads fine without it.
@@ -67,6 +70,23 @@ export function ForgeField() {
     const panel = document.querySelector<HTMLElement>("[data-forge-panel]");
     if (!steps.length) return;
 
+    // The plan the visitor points at in the watch step (hover or focus on a
+    // plan): its sites light up. Read every frame from a data attribute.
+    const watch = steps.find((l) => l.step === "watch")?.el;
+    const pointTier = (e: Event) => {
+      if (!watch) return;
+      const tier = (e.target as HTMLElement).closest<HTMLElement>("[data-tier]")?.dataset.tier;
+      if (tier) watch.dataset.tier = tier;
+      else delete watch.dataset.tier;
+    };
+    const dropTier = () => {
+      if (watch) delete watch.dataset.tier;
+    };
+    watch?.addEventListener("pointerover", pointTier);
+    watch?.addEventListener("focusin", pointTier);
+    watch?.addEventListener("pointerleave", dropTier);
+    watch?.addEventListener("focusout", dropTier);
+
     const stageBox = (live: Live): Box | null => {
       for (const el of live.stages) {
         const r = el.getBoundingClientRect();
@@ -81,10 +101,17 @@ export function ForgeField() {
       return null;
     };
 
+    // Large screens: a step takes over when its top passes ACTIVE_AT. Small
+    // ones: the panel is a band pinned at the top, so the line sits in the
+    // text below it, and the steps only take over once the band is up.
     const activeIndex = (vh: number) => {
+      const band = window.innerWidth < 1024 && panel ? panel.getBoundingClientRect() : null;
+      const line = band ? band.bottom + (vh - band.bottom) * 0.3 : vh * ACTIVE_AT;
+      const bandUp = !band || band.top < vh * 0.6;
       let i = 0;
       steps.forEach((live, k) => {
-        if (live.el.getBoundingClientRect().top <= vh * ACTIVE_AT) i = k;
+        if (k > 0 && !bandUp) return;
+        if (live.el.getBoundingClientRect().top <= line) i = k;
       });
       return i;
     };
@@ -99,8 +126,6 @@ export function ForgeField() {
     let shown = activeIndex(window.innerHeight);
     let target = shown;
     let t = 1;
-    // A box jump left over when a transition is redirected; it fades out.
-    let drift = { x: 0, y: 0, w: 0, h: 0 };
     let lastBox: Box | null = null;
     let lastStep: Step | null = null;
 
@@ -118,9 +143,9 @@ export function ForgeField() {
         if (r.width < 2 || r.bottom <= 0 || r.top >= vh || r.right <= 0 || r.left >= vw) continue;
         regions.push({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom, r: radii.get(el) ?? 0 });
       }
+      const tier = Number(watch?.dataset.tier ?? 0) || 0;
 
       // The scroll picks the step; a new pick starts or redirects a transition.
-      let jumped = false;
       if (want !== target) {
         if (!motion) {
           shown = target = want;
@@ -133,11 +158,10 @@ export function ForgeField() {
           [shown, target] = [target, shown];
           t = 1 - t;
         } else {
-          // Redirected half way: the figure most present becomes the start.
-          if (t >= 0.5) shown = target;
+          // Redirected: whichever figure is drawn now becomes the start.
+          if (t >= SWAP) shown = target;
           target = want;
           t = 0;
-          jumped = true;
         }
       }
       if (t < 1) {
@@ -153,26 +177,16 @@ export function ForgeField() {
       const from = steps[shown]!;
       const a = SCENES[from.step];
       const b = scene;
-      const e = ease(t);
-      const boxA = stageBox(from) ?? lastBox;
-      const boxB = stageBox(cur) ?? boxA;
-      let box: Box = boxA && boxB
-        ? { cx: lerp(boxA.cx, boxB.cx, e), cy: lerp(boxA.cy, boxB.cy, e), w: lerp(boxA.w, boxB.w, e), h: lerp(boxA.h, boxB.h, e) }
-        : { cx: vw / 2, cy: vh / 2, w: vw * 0.5, h: vh * 0.5 };
-      if (lastBox && jumped) {
-        // A redirect would make the picture jump: keep the gap and let it fade.
-        drift = { x: lastBox.cx - box.cx, y: lastBox.cy - box.cy, w: lastBox.w - box.w, h: lastBox.h - box.h };
-      }
-      const fade = Math.exp(-dt / 0.3);
-      drift = { x: drift.x * fade, y: drift.y * fade, w: drift.w * fade, h: drift.h * fade };
-      box = { cx: box.cx + drift.x, cy: box.cy + drift.y, w: Math.max(40, box.w + drift.w), h: Math.max(40, box.h + drift.h) };
+      // Before SWAP the old figure stands in its own stage; after, the new one in its.
+      const before = t < SWAP;
+      const box = (before ? stageBox(from) : stageBox(cur)) ?? lastBox ?? { cx: vw / 2, cy: vh / 2, w: vw * 0.5, h: vh * 0.5 };
       lastBox = box;
 
       // ---- writes: the readouts in the text and the step marked in the panel.
       for (const live of steps) {
         const say = READOUTS[live.step];
         if (!say || !live.readout) continue;
-        const text = say(live.s);
+        const text = say(live.s, live.step === "watch" ? tier : 0);
         if (live.readout.textContent !== text) live.readout.textContent = text;
       }
       if (panel && lastStep !== cur.step) {
@@ -181,12 +195,13 @@ export function ForgeField() {
       }
 
       return {
-        from: { sid: a.sid, state: [a.state(from.s), 0, 0, 0] },
-        to: { sid: b.sid, state: [b.state(cur.s), 0, 0, 0] },
+        from: { sid: a.sid, state: [a.state(from.s, tier), 0, 0, 0] },
+        to: { sid: b.sid, state: [b.state(cur.s, tier), 0, 0, 0] },
         mix: shown === target ? 0 : t,
+        fit: before ? 0 : 1,
         box,
-        rotY: lerp(a.rotY, b.rotY, e),
-        rotX: lerp(a.rotX, b.rotX, e),
+        rotY: before ? a.rotY : b.rotY,
+        rotX: before ? a.rotX : b.rotX,
         regions,
       };
     };
@@ -211,11 +226,15 @@ export function ForgeField() {
     return () => {
       disposed = true;
       window.removeEventListener("resize", readRadii);
+      watch?.removeEventListener("pointerover", pointTier);
+      watch?.removeEventListener("focusin", pointTier);
+      watch?.removeEventListener("pointerleave", dropTier);
+      watch?.removeEventListener("focusout", dropTier);
       if (window.cancelIdleCallback) window.cancelIdleCallback(idle);
       else window.clearTimeout(idle);
       forge?.dispose();
     };
   }, []);
 
-  return <canvas ref={ref} aria-hidden className="forge-canvas pointer-events-none fixed inset-0 z-[1] h-full w-full" />;
+  return <canvas ref={ref} aria-hidden className="forge-canvas pointer-events-none fixed inset-0 h-full w-full" />;
 }

@@ -71,7 +71,12 @@ Les études citées par la recherche vont dans le même sens :
 
    Dessous :
    - **sur ordinateur,** un panneau bleu collant à droite, le texte sur papier à gauche ;
-   - **sur téléphone,** une carte bleue au-dessus de chaque étape.
+   - **sur téléphone,** un bandeau bleu collé sous la barre, le texte défilant dessous.
+     Une première version mettait une carte au-dessus de chaque étape : on faisait défiler
+     des cartes vides.
+
+   Les quatre étapes sont en pastilles dans une bande sous la figure, hors de la zone des
+   particules.
 
    Le canvas est masqué aux scènes visibles : une particule ne peut pas être dessinée sur le texte
    ni sur le papier.
@@ -84,12 +89,16 @@ Les études citées par la recherche vont dans le même sens :
      vérification ; celle qui quitterait Google s'y pose et y reste ;
    - **03 Fix :** le fichier de la page, en jetons de la largeur des vrais caractères ; la ligne
      noindex sort, les lignes remontent ;
-   - **04 Watch :** 25 fenêtres de sites, puis 1, 5 et 25 allumées pour les trois offres.
+   - **04 Watch :** 25 fenêtres de sites. Au repos, celle de l'offre gratuite est allumée,
+     comme le dit le titre. Survoler ou cibler au clavier l'offre Pro en allume 5, Studio 25.
 4. **Le scroll choisit, une horloge joue.**
-   - **La transition.** Une figure devient la suivante en 1,8 s, quelle que soit la vitesse du
-     scroll. Chaque particule a sa part du trajet, du haut de la nouvelle figure vers le bas, et
-     reste presque invisible tant qu'elle n'est pas arrivée. L'ancienne figure s'efface pendant
-     que la nouvelle se dessine, sur place.
+   - **La transition.** Elle prend 2 s, quelle que soit la vitesse du scroll, en trois temps :
+     - la figure présente s'efface sur place ;
+     - les particules traversent sans être vues, et la figure change de scène à ce moment-là ;
+     - la suivante se dessine du haut vers le bas.
+
+     Deux figures ne sont jamais à l'écran ensemble. Une première version faisait les deux à
+     la fois, en balayage : on voyait une seconde de figures cassées superposées.
    - **L'histoire de l'étape** ne joue qu'une fois, après la transition.
    - **Le reste est fixe.** Aucune rotation liée au scroll, deux degrés de respiration au plus,
      et plus de fluide sous la souris.
@@ -112,9 +121,10 @@ Les études citées par la recherche vont dans le même sens :
   - **Lighthouse :** 100 en accessibilité, bonnes pratiques, SEO et navigation par agents, sur
     mobile et sur ordinateur.
   - **Téléphone émulé, processeur ralenti 4× :**
-    - LCP 488 ms, CLS 0 ;
-    - de 121 à 136 images/s sur un scroll qui traverse les quatre étapes, 95 % des images sous
-      14 ms, aucune image longue.
+    - LCP 394 ms, CLS 0 ;
+    - de 102 à 130 images/s sur un scroll qui traverse les quatre étapes, 95 % des images sous
+      14 ms. Il y a 3 images longues au premier passage (démarrage du moteur), aucune
+      ensuite.
   - **Ordinateur :** 144 images/s, 95 % des images sous 7,3 ms.
 - **Deux pièges trouvés en mesurant :**
   - **`body:has(.forge-ui) .support-chat …`** pour peindre la bulle d'aide aux couleurs du site :
@@ -128,3 +138,29 @@ Les études citées par la recherche vont dans le même sens :
   événement.
 - **Mouvement réduit :** les figures sont posées dans leur état final, aucun texte n'attend, les
   animations n'ont plus de délai.
+- **Relecture adverse** par quatre agents (les yeux de Hugo, le code, le contenu,
+  l'accessibilité), chaque constat contre-vérifié. 15 constats ont été confirmés et
+  corrigés ; 24 contre-vérifications n'ont pas abouti (limite d'usage atteinte) et ont été
+  triées à la main.
+  - **Interface :**
+    - la barre devient pleine (bleue) dès que le hero défile ;
+    - le menu mobile est lisible sur le bleu ;
+    - les pastilles et la carte de preuve sont cliquables ;
+    - les fenêtres de sites ne se touchent plus.
+  - **Accessibilité et confort :**
+    - les anneaux de focus sont visibles sur le papier comme sur le bleu ;
+    - la sélection de texte est lisible ;
+    - les commandes natives sont claires (`color-scheme`) ;
+    - l'orange et le rouge sont assombris pour passer sur leurs teintes ;
+    - le titre tient à 320 px ;
+    - le défilement laisse de la place à la barre fixe.
+  - **Textes vrais :**
+    - « the way Googlebot finds it » (la découverte, pas le rendu JavaScript) ;
+    - l'audit gratuit annonce ses 3 pages ;
+    - le rapport dit exactement ce que montre sa carte, avec la ligne de recherche IA ;
+    - le patch d'exemple est attribué à l'éditeur ;
+    - les tirets cadratins des messages de l'audit gratuit sont retirés.
+  - **Pages intérieures :** /audit prend la seconde voix en italique outremer, et les champs
+    de points sombres sont masqués sur le papier.
+- **Reste à faire hors de ce lot :** la vidéo de présentation de 23 s est encore aux anciennes
+  couleurs (pétrole et orange). Elle se régénère depuis `Desktop/Septune-video`.

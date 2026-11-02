@@ -17,8 +17,7 @@ const LINK =
 
 /**
  * A thin monospace line over the page: the mark, three links, sign in, and
- * a round counter with the number of checks (it opens the docs that list
- * them). Over the homepage's blue hero it turns light and has no bar; on the
+ * a pill with the number of checks (it opens the docs that list them). Over the homepage's blue hero it turns light and has no bar; on the
  * paper, a fade at the top of the page, then a solid bar once the page
  * moves, so no line of text ever runs under the links.
  */
@@ -26,8 +25,10 @@ export function SiteNav({ checks }: { checks: number }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
-  // The server renders the homepage with the hero under the nav, so the first paint is already light.
-  const [overHero, setOverHero] = useState(pathname === "/");
+  // Over the hero, kept per page: the server renders the homepage with the
+  // hero under the nav, so its first paint is already light.
+  const [hero, setHero] = useState({ path: pathname, over: pathname === "/" });
+  const overHero = hero.path === pathname ? hero.over : pathname === "/";
 
   // Observers, never a scroll listener: reading the scroll position while the
   // page changes forced a layout on every event (trace of 2026-11-01).
@@ -37,12 +38,13 @@ export function SiteNav({ checks }: { checks: number }) {
     const marker = document.querySelector<HTMLElement>("[data-nav-top]");
     const scrolledIo = marker ? new IntersectionObserver(([e]) => setScrolled(!e?.isIntersecting)) : null;
     if (marker) scrolledIo?.observe(marker);
-    const hero = document.querySelector<HTMLElement>("[data-nav-hero]");
-    const heroIo = hero
-      ? new IntersectionObserver(([e]) => setOverHero(!!e?.isIntersecting), { rootMargin: "-72px 0px 0px 0px" })
+    const heroEl = document.querySelector<HTMLElement>("[data-nav-hero]");
+    const heroIo = heroEl
+      ? new IntersectionObserver(([e]) => setHero({ path: pathname, over: !!e?.isIntersecting }), {
+          rootMargin: "-72px 0px 0px 0px",
+        })
       : null;
-    if (hero) heroIo?.observe(hero);
-    else setOverHero(false);
+    if (heroEl) heroIo?.observe(heroEl);
     return () => {
       scrolledIo?.disconnect();
       heroIo?.disconnect();
@@ -72,7 +74,8 @@ export function SiteNav({ checks }: { checks: number }) {
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-18 border-b border-border bg-bg transition-opacity duration-300",
-          (!scrolled || overHero) && "opacity-0",
+          !scrolled && !open && "opacity-0",
+          open && "transition-none",
         )}
       />
       <nav aria-label="Main" className="container-rf relative flex h-18 items-center gap-7">
@@ -94,10 +97,9 @@ export function SiteNav({ checks }: { checks: number }) {
         <Link
           href="/docs"
           aria-label={`${checks} checks: see what Septune measures`}
-          title={`${checks} checks`}
-          className="ml-auto grid size-11 shrink-0 place-items-center rounded-full border border-border bg-bg font-mono text-sm text-fg transition-colors duration-200 hover:border-molten/70 md:ml-0"
+          className="ml-auto inline-flex h-10 shrink-0 items-center rounded-full border border-border bg-bg px-4 font-mono text-[13px] text-fg transition-colors duration-200 hover:border-molten-bright md:ml-0"
         >
-          {checks}
+          {checks} checks
         </Link>
 
         <button

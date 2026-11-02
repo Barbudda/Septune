@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     );
   }
   if (inFlight >= MAX_CONCURRENT) {
-    return NextResponse.json({ error: "Busy right now — try again in a few seconds." }, { status: 503 });
+    return NextResponse.json({ error: "Busy right now. Try again in a few seconds." }, { status: 503 });
   }
 
   inFlight++;

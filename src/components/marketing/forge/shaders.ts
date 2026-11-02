@@ -110,7 +110,7 @@ vec3 homeOf(vec4 a, vec4 b, vec4 c, float sid, vec4 st, vec4 rnd, float t, out f
     if (is(kind, 8.0)) p.y += 1.7 * (1.0 - smoothstep(0.0, 0.55, st.x));
   } else if (sid > 2.5 && sid < 3.5) {
     // The noindex line slides out to the right, then the lines below close the gap.
-    if (is(kind, 3.0)) p.x += 1.6 * smoothstep(0.08, 0.5, st.x);
+    if (is(kind, 3.0)) p.x += 1.1 * smoothstep(0.08, 0.5, st.x);
     if (is(kind, 5.0)) p.y += c.w * smoothstep(0.45, 0.85, st.x);
   }
   if (is(kind, 2.0)) p += 0.05 * vec3(sin(t * 0.21 + rnd.x * 6.28), cos(t * 0.17 + rnd.y * 6.28), sin(t * 0.13 + rnd.z * 6.28));
@@ -119,14 +119,31 @@ vec3 homeOf(vec4 a, vec4 b, vec4 c, float sid, vec4 st, vec4 rnd, float t, out f
 `;
 
 /**
+ * A transition in three beats on one clock (uMix, 0 -> 1): the figure on
+ * screen fades where it stands, the particles cross to the next figure while
+ * unseen, and the next figure draws itself from the top down. Two figures
+ * are never on screen together (Hugo, 2026-11-01: "tout se mélange").
+ */
+const PHASES = /* glsl */ `
+float crossing(float m) { return smoothstep(0.24, 0.58, m); }
+float leaving(float m) { return 1.0 - smoothstep(0.0, 0.3, m); }
+float arriving(float m, float order) {
+  float t0 = 0.56 + order * 0.3;
+  return smoothstep(t0, t0 + 0.14, m);
+}
+// Where a particle comes in the drawing of the next figure: top rows first.
+float orderIn(vec3 h1, vec4 span, float r) {
+  float xn = clamp((h1.x - span.x) / max(span.y, 1e-3), 0.0, 1.0);
+  float yn = clamp((h1.y - span.z) / max(span.w, 1e-3), 0.0, 1.0);
+  return (1.0 - yn) * 0.7 + xn * 0.18 + r * 0.12;
+}
+`;
+
+/**
  * One simulation step per frame. Each particle has its two homes, one in the
- * figure on screen and one in the figure coming; uMix (a clock, 0 -> 1) moves
- * it from the first to the second over its own part of the transition,
- * ordered from the top of the new figure down (a little left to right, a
- * little at random), so the old figure clears and the new one draws itself
- * in one sweep, in place. Paths are straight with a faint wobble: no cloud.
- * It then follows its home with a fixed time constant, whatever the frame
- * rate; the point shader keeps it nearly invisible until it has landed.
+ * figure on screen and one in the figure coming, and crosses from the first
+ * to the second in the middle beat of the transition. It follows its home
+ * with a fixed time constant, whatever the frame rate.
  */
 export const SIM_FRAG = /* glsl */ `
 uniform sampler2D uPos;
@@ -149,7 +166,7 @@ uniform vec4 uSpan;       // the coming figure: left edge, width, bottom edge, h
 varying vec2 vUv;
 ${CURL}
 ${HOME}
-const float SPREAD = 0.34;
+${PHASES}
 void main() {
   vec4 rnd = texture2D(uRandom, vUv);
   vec4 a0 = texture2D(uA0, vUv);
@@ -157,11 +174,7 @@ void main() {
   float f0, f1;
   vec3 h0 = homeOf(a0, texture2D(uB0, vUv), texture2D(uC0, vUv), uSid0, uSt0, rnd, uTime, f0);
   vec3 h1 = homeOf(a1, texture2D(uB1, vUv), texture2D(uC1, vUv), uSid1, uSt1, rnd, uTime, f1);
-  float xn = clamp((h1.x - uSpan.x) / max(uSpan.y, 1e-3), 0.0, 1.0);
-  float yn = clamp((h1.y - uSpan.z) / max(uSpan.w, 1e-3), 0.0, 1.0);
-  float order = (1.0 - yn) * 0.62 + xn * 0.2 + rnd.w * 0.18;
-  float t0 = order * (1.0 - SPREAD);
-  float k = smoothstep(t0, t0 + SPREAD, uMix);
+  float k = crossing(uMix);
   vec3 home = mix(h0, h1, k);
   vec3 drift = normalize(curlNoise(home * 1.3 + rnd.xyz * 4.0, uTime * 0.2) + 1e-5);
   home += sin(k * 3.14159265) * drift * 0.025;
@@ -172,7 +185,7 @@ void main() {
   if (flowing && (k < 0.5 ? f0 : f1) < 0.01) pos = home;
   // Unhurried between two figures; close behind its home the rest of the
   // time, so a page that slides or falls in a story stays sharp.
-  float tau = (k > 0.001 && k < 0.999) ? 0.24 : 0.07;
+  float tau = (k > 0.001 && k < 0.999) ? 0.2 : 0.07;
   pos += (home - pos) * (1.0 - exp(-uDt / tau));
   if (uSnap > 0.5 || length(pos) > 14.0) pos = home;
   gl_FragColor = vec4(pos, k);
@@ -201,10 +214,14 @@ uniform float uTime;
 uniform float uSize;
 uniform float uDPR;
 uniform float uOpacity;
+uniform float uMix;
+uniform vec4 uSpan;
 attribute vec2 ref;
 attribute vec4 rnd;
 varying vec4 vCol;
 ${HOME}
+${PHASES}
+float bell(float x) { return exp(-x * x); }
 const vec3 INK = vec3(0.949, 0.961, 1.0);
 const vec3 SOFT = vec3(0.659, 0.729, 1.0);
 const vec3 ACCENT = vec3(0.843, 0.949, 0.235);
@@ -227,7 +244,7 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
       col = ACCENT;
       w = 1.4 * mix(0.25, 1.0, face);
     } else if (!is(kind, 2.0)) {
-      float band = exp(-pow((c.w - scanHeight(uTime)) / 0.08, 2.0));
+      float band = bell((c.w - scanHeight(uTime)) / 0.08);
       col = mix(col, ACCENT, band * 0.7);
       w *= 1.0 + band * 0.8;
     }
@@ -235,7 +252,7 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
     // Tree: pages ahead of the crawl are faint, read pages bright, the front in the accent.
     if (!is(kind, 2.0)) {
       float read = step(order, st.x);
-      float front = exp(-pow((order - st.x) / 0.035, 2.0)) * step(0.0, st.x) * (1.0 - step(1.02, st.x));
+      float front = bell((order - st.x) / 0.035) * step(0.0, st.x) * (1.0 - step(1.02, st.x));
       col = mix(SOFT, col, read);
       w *= mix(0.3, 1.0, read);
       col = mix(col, ACCENT, front);
@@ -263,7 +280,7 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
     }
     if (is(kind, 3.0)) {
       col = ACCENT;
-      w *= 1.5 * (1.0 - smoothstep(0.3, 0.55, st.x));
+      w *= 1.5 * (1.0 - smoothstep(0.15, 0.45, st.x));
     }
   } else {
     // Sites: the plan's sites lit, the others faint; a check sweeps across the lit ones.
@@ -272,7 +289,7 @@ vec4 look(vec4 a, vec4 b, vec4 c, float sid, vec4 st, out vec3 p) {
       col = mix(SOFT, col, lit);
       w *= mix(0.24, 1.0, lit);
       float sweep = -2.4 + mod(uTime * 0.55, 5.6);
-      float band = exp(-pow((p.x - sweep) / 0.22, 2.0)) * lit;
+      float band = bell((p.x - sweep) / 0.22) * lit;
       col = mix(col, ACCENT, band * 0.8);
       w *= 1.0 + band;
     }
@@ -288,11 +305,12 @@ void main() {
   vec4 l0 = look(texture2D(uA0, ref), texture2D(uB0, ref), c0, uSid0, uSt0, p0);
   vec4 l1 = look(texture2D(uA1, ref), texture2D(uB1, ref), c1, uSid1, uSt1, p1);
   float k = state.w;
-  vec4 l = mix(l0, l1, k);
-  // A particle on its way between two figures is almost invisible: the old
-  // figure clears and the new one appears where its particles land.
+  // It wears the colours of the figure it belongs to: in between it is unseen.
+  vec4 l = k < 0.5 ? l0 : l1;
+  float shown = max(leaving(uMix), arriving(uMix, orderIn(p1, uSpan, rnd.w)));
+  // A straggler still on its way stays dim until it lands.
   float away = length(state.xyz - mix(p0, p1, k));
-  l.a *= mix(1.0, 0.1, smoothstep(0.015, 0.22, away)) * (1.0 - 0.3 * sin(k * 3.14159265));
+  l.a *= shown * mix(1.0, 0.12, smoothstep(0.02, 0.25, away));
   vCol = vec4(l.rgb, l.a * uOpacity);
 
   vec4 mv = modelViewMatrix * vec4(state.xyz, 1.0);

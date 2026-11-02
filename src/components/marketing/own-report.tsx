@@ -115,10 +115,14 @@ export function OwnReport() {
           </li>
         ))}
       </ol>
+      <p className="border-t border-border px-6 py-4 text-sm leading-relaxed text-fg-muted md:px-8">
+        <span className="font-mono text-[12.5px] text-fg">AI-search readiness 96/100.</span> One warning: the
+        Organization schema has no sameAs links to the company&apos;s profiles.
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-6 py-5 md:px-8">
-        <p className="font-mono text-[12.5px] text-fg-subtle">5 findings: 3 medium, 2 low, none critical.</p>
+        <p className="font-mono text-[12.5px] text-fg-subtle">5 findings: 3 medium, 2 low, none critical. Full crawl, 93 pages.</p>
         <Link href="/audit" className="btn-lime">
-          Run it on your site
+          Audit 3 pages of yours, free
         </Link>
       </div>
     </div>

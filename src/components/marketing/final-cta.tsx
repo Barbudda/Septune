@@ -40,7 +40,7 @@ export function FinalCta() {
           <div className="relative">
             <h2 className="mx-auto max-w-2xl text-balance text-3xl font-semibold tracking-tight md:text-5xl">
               Make your next deploy{" "}
-              <span className="text-signal">SEO-safe</span>
+              <em>SEO-safe</em>
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-fg-muted">
               Run a free audit, add the pull-request check in two minutes,

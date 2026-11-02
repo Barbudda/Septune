@@ -261,7 +261,7 @@ export function CauseWeb({ variant, className }: { variant: Variant; className?:
   });
 
   return (
-    <div aria-hidden className={`pointer-events-none absolute inset-0 overflow-hidden ${className ?? ""}`}>
+    <div aria-hidden className={`dot-field pointer-events-none absolute inset-0 overflow-hidden ${className ?? ""}`}>
       <canvas ref={ref} className="h-full w-full" />
     </div>
   );

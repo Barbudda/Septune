@@ -183,7 +183,7 @@ export function SupportChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about Septune…"
-              className="lg lg-thin h-9 flex-1 rounded-full px-4 text-sm text-fg outline-none placeholder:text-fg-subtle focus-visible:ring-1 focus-visible:ring-molten/60"
+              className="lg lg-thin h-9 flex-1 rounded-full px-4 text-sm text-fg outline-none placeholder:text-fg-subtle focus-visible:ring-2 focus-visible:ring-molten-bright"
             />
             <button
               type="submit"

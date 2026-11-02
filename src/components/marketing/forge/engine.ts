@@ -14,6 +14,8 @@ export type ForgeFrame = {
   to: ForgeSlot;
   /** Particles move from `from` to `to` as mix goes 0 -> 1 (a clock, see forge-field.tsx). */
   mix: number;
+  /** Which figure the box is sized for: 0 `from`, 1 `to` (it switches while the picture is unseen). */
+  fit: number;
   /** Where the picture sits, in CSS pixels of the viewport: it is fitted into this box. */
   box: { cx: number; cy: number; w: number; h: number };
   rotY: number;
@@ -160,16 +162,16 @@ export function createForge(
     uSt0: { value: new THREE.Vector4(0, 0, 0, 0) },
     uSt1: { value: new THREE.Vector4(0, 0, 0, 0) },
     uTime: { value: 0 },
+    uMix: { value: 0 },
+    uSpan: { value: new THREE.Vector4(-1, 2, -1, 2) },
   };
 
   const sim = material(SIM_FRAG, {
     ...slots,
     uPos: tex(),
     uRandom: tex(randomTex),
-    uMix: { value: 0 },
     uDt: { value: 1 / 60 },
     uSnap: { value: opts.motion ? 0 : 1 },
-    uSpan: { value: new THREE.Vector4(-1, 2, -1, 2) },
   });
 
   // ---- points
@@ -241,8 +243,8 @@ export function createForge(
     slots.uSt0.value.set(...f.from.state);
     slots.uSt1.value.set(...f.to.state);
     slots.uTime.value = time;
-    sim.u.uMix.value = f.mix;
-    sim.u.uSpan.value.set(-s1.width / 2, s1.width, -s1.height / 2, s1.height);
+    slots.uMix.value = f.mix;
+    slots.uSpan.value.set(-s1.width / 2, s1.width, -s1.height / 2, s1.height);
     return { s0, s1 };
   }
 
@@ -260,8 +262,8 @@ export function createForge(
   function place(f: ForgeFrame, s0: { width: number; height: number }, s1: { width: number; height: number }, time: number) {
     const halfH = Math.tan(HALF_FOV) * CAMERA_Z;
     const perPx = (2 * halfH) / H;
-    const w = s0.width + (s1.width - s0.width) * f.mix;
-    const h = s0.height + (s1.height - s0.height) * f.mix;
+    const w = f.fit ? s1.width : s0.width;
+    const h = f.fit ? s1.height : s0.height;
     const fit = Math.min((f.box.w * perPx) / w, (f.box.h * perPx) / h);
     group.position.set((f.box.cx - W / 2) * perPx, (H / 2 - f.box.cy) * perPx, 0);
     group.scale.setScalar(Math.max(0.01, fit));

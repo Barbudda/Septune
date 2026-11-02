@@ -74,11 +74,10 @@ function StepText({ copy, children }: { copy: StepCopy; children: React.ReactNod
   );
 }
 
-/** A step: on small screens its own blue card above the text, on large ones the shared panel beside it. */
+/** A step's text; its figure is drawn in the shared stage (the panel beside it, or the band above it on phones). */
 function StepBlock({ copy, children }: { copy: StepCopy; children: React.ReactNode }) {
   return (
     <article id={copy.step} data-forge-step={copy.step} aria-labelledby={`${copy.step}-title`} className="step-block container-rf">
-      <div aria-hidden data-forge-region data-forge-stage={copy.step} className="step-card" />
       <StepText copy={copy}>{children}</StepText>
     </article>
   );
@@ -86,7 +85,7 @@ function StepBlock({ copy, children }: { copy: StepCopy; children: React.ReactNo
 
 const STEPS: Record<Step, StepCopy> = {
   hero: { step: "hero", n: "", label: "", title: [] },
-  read: { step: "read", n: "01", label: "Read", title: [{ text: "It reads your site" }, { text: "the way Googlebot does.", em: true }] },
+  read: { step: "read", n: "01", label: "Read", title: [{ text: "It reads your site" }, { text: "the way Googlebot finds it.", em: true }] },
   catch: { step: "catch", n: "02", label: "Catch", title: [{ text: "It fails the pull request" }, { text: "that would drop pages from Google.", em: true }] },
   fix: { step: "fix", n: "03", label: "Fix", title: [{ text: "Each fix goes" }, { text: "to your AI editor.", em: true }] },
   watch: { step: "watch", n: "04", label: "Watch", title: [{ text: "One site watched" }, { text: "for free.", em: true }] },
@@ -118,7 +117,7 @@ export default function LandingPage() {
             <div>
               <p className="hero-pill">
                 <span aria-hidden className="size-1.5 rounded-full bg-lime" />
-                technical SEO, checked on every deploy
+                technical SEO, on every deploy
               </p>
               <h1 id="hero-title" aria-label={plain(HERO)} className="hero-title">
                 <Letters parts={HERO} />
@@ -126,7 +125,7 @@ export default function LandingPage() {
             </div>
             <div className="lg:pb-2">
               <p className="text-lg leading-relaxed text-on-blue md:text-xl">
-                Septune reads your site the way Googlebot does and checks it where SEO breaks: in your editor, in every
+                Septune crawls your site like a search engine and checks it where SEO breaks: in your editor, in every
                 pull request, and in production.
               </p>
               <form action="/audit" method="get" className="mt-7">
@@ -143,7 +142,7 @@ export default function LandingPage() {
                     spellCheck={false}
                     required
                     placeholder="your-site.com"
-                    className="min-w-0 flex-1 bg-transparent font-mono text-[15px] text-navy placeholder:text-navy/55 focus:outline-none"
+                    className="min-w-0 flex-1 bg-transparent font-mono text-[15px] text-navy placeholder:text-navy/70 focus:outline-none"
                   />
                   <button type="submit" className="btn-lime h-11 shrink-0 px-6">
                     Audit free
@@ -152,7 +151,7 @@ export default function LandingPage() {
               </form>
               <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <p className="font-mono text-[13px] text-on-blue-muted">
-                  no signup · {CHECKS} checks · every finding cites its evidence
+                  no signup · 3 pages free · {CHECKS} checks · every finding cites its evidence
                 </p>
                 <TourVideo className="tour-on-blue" />
               </div>
@@ -162,12 +161,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── The four steps: text on paper, the figure in the panel beside it ── */}
-      <section aria-label="How Septune works" className="story relative">
+      <section id="how-it-works" aria-label="How Septune works" className="story relative">
         <div className="story-stage">
-          <div className="container-rf grid h-full grid-cols-[minmax(0,30rem)_1fr] gap-16 pt-[88px] pb-5">
-            <div />
+          <div className="story-stage-grid container-rf">
+            <div className="stage-spacer" />
             <div data-forge-panel className="stage-col">
-              <div aria-hidden data-forge-region data-forge-stage="read catch fix watch" className="stage-panel" />
+              {/* The particles are masked to this area only, never over the chips below it. */}
+              <div aria-hidden data-forge-region data-forge-stage="read catch fix watch" className="stage-figure" />
               <nav aria-label="Steps" className="stage-chips">
                 {(["read", "catch", "fix", "watch"] as const).map((s) => (
                   <a key={s} href={`#${s}`} data-chip={s}>
@@ -182,10 +182,10 @@ export default function LandingPage() {
         <div className="story-steps">
           <StepBlock copy={STEPS.read}>
             <p data-reveal className="step-body [--d:160]">
-              Links first, then every URL your sitemap lists. robots.txt is read and honoured the way Google reads it,
-              and every page it reaches goes through the same {CHECKS} checks.
+              Links first, then the URLs your sitemap lists, with robots.txt read by Google&apos;s rules. The pages it
+              reaches go through {CHECKS} checks, from indexing to structured data.
             </p>
-            <div data-reveal className="mt-7 [--d:260]">
+            <div id="features" data-reveal className="mt-7 [--d:260]">
               <p className="font-mono text-[12.5px] text-fg-subtle">{CHECKS} checks, by family</p>
               <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="What the checks cover">
                 {FAMILIES.map(([cat, n]) => (
@@ -239,8 +239,8 @@ export default function LandingPage() {
 
           <StepBlock copy={STEPS.fix}>
             <p data-reveal className="step-body [--d:160]">
-              Every finding comes with the affected URLs and the files to look at. Mechanical ones come with a ready
-              patch for your framework.
+              Every finding comes with the affected URLs and the files to look at, so your AI editor can make the
+              change. Mechanical ones come with a ready patch for your framework.
             </p>
             <pre data-reveal className="ui-card diff mt-7 overflow-x-auto px-5 py-4 font-mono text-[13px] leading-relaxed [--d:260]">
               <span className="text-fg-subtle">app/pricing/page.tsx</span>
@@ -249,6 +249,9 @@ export default function LandingPage() {
               <span className="diff-del">{"-   robots: { index: false },\n"}</span>
               <span className="text-fg">{"  };"}</span>
             </pre>
+            <p data-reveal className="mt-2 font-mono text-[12px] text-fg-subtle [--d:300]">
+              the change your editor makes from the finding
+            </p>
             <ul data-reveal className="mt-6 flex flex-wrap gap-x-5 gap-y-2 [--d:340]" aria-label="Framework guides">
               {FRAMEWORK_PAGES.map((fw) => (
                 <li key={fw.slug}>
@@ -258,7 +261,7 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <p data-reveal className="mt-5 text-sm leading-relaxed text-fg-muted [--d:380]">
+            <p id="security" data-reveal className="mt-5 text-sm leading-relaxed text-fg-muted [--d:380]">
               In Claude Code, Cursor, VS Code or Windsurf, over MCP:{" "}
               <Link href="/docs/agent" className={TEXT_LINK}>
                 connect your editor
@@ -274,7 +277,13 @@ export default function LandingPage() {
             </p>
             <ul className="mt-7 space-y-2.5">
               {PRICING_TIERS.map((tier, i) => (
-                <li key={tier.id} data-reveal className="ui-card plan" style={{ "--d": 240 + i * 80 } as React.CSSProperties}>
+                <li
+                  key={tier.id}
+                  data-reveal
+                  data-tier={i}
+                  className="ui-card plan"
+                  style={{ "--d": 240 + i * 80 } as React.CSSProperties}
+                >
                   <div>
                     <p className="flex items-baseline gap-2">
                       <span className="font-display text-2xl text-fg">{tier.name}</span>
@@ -310,8 +319,9 @@ export default function LandingPage() {
               </h2>
             </div>
             <p data-reveal className="step-body lg:pb-2 [--d:140]">
-              On 1 November 2026 it read septune.dev, 93 pages in 8 seconds. This is everything it found, nothing
-              removed: three things to fix, two that are expected.
+              On 1 November 2026 it read septune.dev, 93 pages in 8 seconds. Here is every issue it raised, nothing
+              removed: three to fix, one to review, and one on purpose, since /login, /signup and /preorder stay out
+              of search.
             </p>
           </div>
           <div data-reveal className="mt-12 [--d:220]">
@@ -373,13 +383,13 @@ export default function LandingPage() {
                 spellCheck={false}
                 required
                 placeholder="your-site.com"
-                className="min-w-0 flex-1 bg-transparent font-mono text-[15px] text-navy placeholder:text-navy/55 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent font-mono text-[15px] text-navy placeholder:text-navy/70 focus:outline-none"
               />
               <button type="submit" className="btn-lime h-11 shrink-0 px-6">
                 Audit free
               </button>
             </div>
-            <p className="mt-4 font-mono text-[13px] text-on-blue-muted">no signup · {CHECKS} checks · results in seconds</p>
+            <p className="mt-4 font-mono text-[13px] text-on-blue-muted">no signup · 3 pages free · {CHECKS} checks</p>
           </form>
         </div>
       </section>

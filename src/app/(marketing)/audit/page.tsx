@@ -65,7 +65,7 @@ export default function FreeAuditPage() {
         <div className="container-rf relative z-10">
           <div className="mx-auto max-w-3xl">
             <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight md:text-5xl">
-              Free technical SEO audit. <span className="text-signal">Measured</span>, not guessed.
+              Free technical SEO audit. <em>Measured</em>, not guessed.
             </h1>
             <p className="mt-5 max-w-2xl text-lg text-fg-muted">
               Enter a URL. Septune crawls the rendered pages and reports every technical-SEO issue it

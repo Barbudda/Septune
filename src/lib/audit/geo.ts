@@ -244,7 +244,7 @@ export function runGeoAudit(
     detail:
       blockedSearch.length === 0
         ? "No AI search crawler is blocked by robots.txt."
-        : `robots.txt blocks ${blockedSearch.map((b) => b.bot).join(", ")} — these engines can't fetch your pages to cite them.`,
+        : `robots.txt blocks ${blockedSearch.map((b) => b.bot).join(", ")}. These engines can't fetch your pages to cite them.`,
     fix:
       blockedSearch.length === 0
         ? undefined
@@ -301,7 +301,7 @@ export function runGeoAudit(
     detail:
       jsOnly.length === 0
         ? "Every crawled page carries its text in the server HTML."
-        : `${jsOnly.length} page(s) ship a large HTML shell with under 80 words of text — most AI crawlers don't execute JavaScript and see them as empty.`,
+        : `${jsOnly.length} page(s) ship a large HTML shell with under 80 words of text. Most AI crawlers don't execute JavaScript and see them as empty.`,
     fix: jsOnly.length ? "Server-render or prerender these routes (SSR/SSG) so the text is in the initial HTML." : undefined,
     pages: jsOnly.map((p) => pathOf(p.url)),
   });
@@ -333,7 +333,7 @@ export function runGeoAudit(
     title: "Clear entity identity (who is behind the site)",
     status: orgPage && hasSameAs ? "pass" : orgPage ? "warn" : "fail",
     detail: !orgPage
-      ? "No Organization or Person schema — engines can't tie your content to a known entity."
+      ? "No Organization or Person schema, so engines can't tie your content to a known entity."
       : hasSameAs
         ? "Organization/Person schema with sameAs links to your other profiles."
         : "Organization/Person schema found, but no sameAs links to your profiles (GitHub, LinkedIn, X…).",
@@ -407,7 +407,7 @@ export function runGeoAudit(
     group: "citable",
     title: "Self-contained page summaries",
     status: described.length === ok.length && ok.length > 0 ? "pass" : described.length > 0 ? "warn" : "fail",
-    detail: `${described.length}/${ok.length} page(s) have a meta description of 50+ characters — the one-line summary engines often reuse.`,
+    detail: `${described.length}/${ok.length} page(s) have a meta description of 50+ characters. Engines often reuse it as the one-line summary.`,
     pages: ok.filter((p) => !described.includes(p)).map((p) => pathOf(p.url)),
   });
 

@@ -49,7 +49,7 @@ export function NoindexChecker() {
   return (
     <div>
       <form onSubmit={run} className="flex flex-col gap-3 sm:flex-row">
-        <label className="lg lg-thin flex h-12 items-center gap-2.5 rounded-full px-5 sm:flex-1 focus-within:ring-1 focus-within:ring-molten/60">
+        <label className="lg lg-thin flex h-12 items-center gap-2.5 rounded-full px-5 sm:flex-1 focus-within:ring-2 focus-within:ring-molten-bright">
           <Search className="size-4 shrink-0 text-fg-subtle" />
           <span className="sr-only">Page URL</span>
           <input
