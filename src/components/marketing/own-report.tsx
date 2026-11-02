@@ -4,16 +4,16 @@ import { cn } from "@/lib/utils";
 /*
  * Septune's report on its own site, as the CLI printed it:
  *   septune audit https://www.septune.dev --pages 100 --json
- * run on 2026-11-01 at 22:06 (Paris). Copied as is, nothing removed; when the
+ * run on 2026-11-02 at 16:19 (Paris). Copied as is, nothing removed; when the
  * site changes, run it again and replace these values with the new run.
  */
-const RUN = { site: "septune.dev", date: "1 November 2026", pages: 93, seconds: 8, score: 99 };
+const RUN = { site: "septune.dev", date: "2 November 2026", pages: 94, seconds: 9, score: 100 };
 
 const CATEGORIES: [string, number][] = [
-  ["Indexing", 99],
-  ["Metadata", 99],
-  ["Performance", 98],
-  ["Internal linking", 94],
+  ["Indexing", 100],
+  ["Metadata", 100],
+  ["Performance", 100],
+  ["Internal linking", 100],
   ["Structure", 100],
   ["Images", 100],
   ["Structured data", 100],
@@ -22,40 +22,14 @@ const CATEGORIES: [string, number][] = [
 
 type Finding = { impact: "medium" | "low"; area: string; title: string; evidence: string; pages: string[] };
 
+// The one finding of the run. The engine reports it but leaves it out of the
+// score: a login page kept out of search is a choice, not a fault.
 const FINDINGS: Finding[] = [
-  {
-    impact: "medium",
-    area: "internal linking",
-    title: "Missing internal links between related pages",
-    evidence: "40 link opportunities across 30 pages, computed from the site's own content.",
-    pages: ["/docs/issues/indexing-canonical-missing to /docs/issues/meta-og-image-missing, 91% related"],
-  },
-  {
-    impact: "medium",
-    area: "performance",
-    title: "Slow server response (TTFB)",
-    evidence: "3 pages answered in more than 800 ms during the crawl. File to look at: next.config.mjs.",
-    pages: ["/login 847 ms", "/signup 917 ms", "/preorder 1159 ms"],
-  },
-  {
-    impact: "medium",
-    area: "internal linking",
-    title: "Links to broken destinations",
-    evidence: "1 link answers with a hard error.",
-    pages: ["github.com/Barbudda/septune#2-in-your-ai-editor-the-agent: HTTP 404"],
-  },
-  {
-    impact: "low",
-    area: "metadata",
-    title: "Title and H1 don't reflect the page's content",
-    evidence: "16 pages whose main topic words are missing from their title and H1.",
-    pages: ["/pricing: topic pro, plan, email"],
-  },
   {
     impact: "low",
     area: "indexing",
     title: "Utility pages kept out of search (noindex)",
-    evidence: "3 utility pages carry noindex, and none of them is in the sitemap. Expected.",
+    evidence: "3 utility pages carry noindex, and none of them is in the sitemap. Expected, so it costs no points.",
     pages: ["/login", "/signup", "/preorder"],
   },
 ];
@@ -116,11 +90,11 @@ export function OwnReport() {
         ))}
       </ol>
       <p className="border-t border-border px-6 py-4 text-sm leading-relaxed text-fg-muted md:px-8">
-        <span className="font-mono text-[12.5px] text-fg">AI-search readiness 96/100.</span> One warning: the
-        Organization schema has no sameAs links to the company&apos;s profiles.
+        <span className="font-mono text-[12.5px] text-fg">AI-search readiness 100/100.</span> All 11 checks pass,
+        from AI crawlers allowed in robots.txt to an llms.txt, server-rendered text and a named publisher.
       </p>
       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-6 py-5 md:px-8">
-        <p className="font-mono text-[12.5px] text-fg-subtle">5 findings: 3 medium, 2 low, none critical. Full crawl, 93 pages.</p>
+        <p className="font-mono text-[12.5px] text-fg-subtle">1 finding, on purpose, none to fix. Full crawl, 94 pages.</p>
         <Link href="/audit" className="btn-lime">
           Audit 3 pages of yours, free
         </Link>

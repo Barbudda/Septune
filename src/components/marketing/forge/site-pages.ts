@@ -1,9 +1,9 @@
 /**
- * septune.dev as Septune crawled it on 2026-11-01 (septune audit
- * https://www.septune.dev --pages 100): 93 pages, breadth first. The home
- * page, the 16 pages it links to, then the 76 one link deeper. A snapshot of
- * that run, not of the live catalogue: the homepage says "93 pages read on
- * 1 November", so the figures draw exactly those. Run the crawl again and
+ * septune.dev as Septune crawled it on 2026-11-02 (septune audit
+ * https://www.septune.dev --pages 100): 94 pages, breadth first. The home
+ * page, the 17 pages it links to, then the 76 one link deeper. A snapshot of
+ * that run, not of the live catalogue: the homepage says "94 pages read on
+ * 2 November", so the figures draw exactly those. Run the crawl again and
  * replace this list when the site changes.
  */
 
@@ -24,6 +24,7 @@ export const LINKED_PAGES = [
   "/tools/llms-txt-generator",
   "/privacy",
   "/terms",
+  "/legal",
   "/login",
   "/signup",
   "/preorder",

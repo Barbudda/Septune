@@ -25,9 +25,9 @@ export type Scene = {
  * 2026-10-31: replaying is friction).
  */
 export const SCENES: Record<Step, Scene> = {
-  // septune.dev's 93 pages as a galaxy, turning; it reads one page at a time, and the pages under the cursor.
+  // septune.dev's 94 pages as a galaxy, turning; it reads one page at a time, and the pages under the cursor.
   hero: { sid: FIGURE.galaxy, story: 0, state: () => 0, rotY: 0, rotX: GALAXY_TILT },
-  // septune.dev's own 93 pages, read from the home page down.
+  // septune.dev's own 94 pages, read from the home page down.
   read: { sid: FIGURE.tree, story: 6.5, state: (s) => -0.03 + s * 1.08, rotY: -0.1, rotX: 0.05 },
   // Pages fall through the check; the one that would leave Google lands on it and stays.
   catch: { sid: FIGURE.gate, story: 3.2, state: (s) => s, rotY: 0.16, rotX: 0.03 },

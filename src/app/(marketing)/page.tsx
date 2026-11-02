@@ -107,12 +107,12 @@ export default function LandingPage() {
         <div aria-hidden data-forge-stage="hero" className="hero-stage" />
         {/* Proof before atmosphere: the real report, one click away. */}
         <Link href="#report" data-forge-hole className="hero-proof">
-          <span className="report-score report-score-sm" style={{ "--score": 99 } as React.CSSProperties}>
-            <span className="text-[15px] font-semibold text-navy">99</span>
+          <span className="report-score report-score-sm" style={{ "--score": 100 } as React.CSSProperties}>
+            <span className="text-[15px] font-semibold text-navy">100</span>
           </span>
           <span>
             <span className="block text-[14px] font-medium text-navy">septune.dev, audited by Septune</span>
-            <span className="mt-0.5 block font-mono text-[12px] text-navy/70">93 pages in 8 s · see the report</span>
+            <span className="mt-0.5 block font-mono text-[12px] text-navy/70">94 pages in 9 s · see the report</span>
           </span>
         </Link>
         <div className="hero-words container-rf relative z-10 flex min-h-[100svh] flex-col justify-end pt-[76px] pb-10 lg:pb-14">
@@ -200,7 +200,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <p data-reveal className="mt-6 text-sm leading-relaxed text-fg-muted [--d:340]">
-              The figure is this site: septune.dev, crawled by Septune on 1 November 2026.{" "}
+              The figure is this site: septune.dev, crawled by Septune on 2 November 2026.{" "}
               <Link href="/docs" className={TEXT_LINK}>
                 read every check
               </Link>
@@ -323,9 +323,9 @@ export default function LandingPage() {
               </h2>
             </div>
             <p data-reveal className="step-body lg:pb-2 [--d:140]">
-              On 1 November 2026 it read septune.dev, 93 pages in 8 seconds. Here is every issue it raised, nothing
-              removed: three to fix, one to review, and one on purpose, since /login, /signup and /preorder stay out
-              of search.
+              On 2 November 2026 it read septune.dev, 94 pages in 9 seconds. The day before, it scored 99 and raised
+              four things to fix; we fixed them and ran it again. Here is that run, nothing removed: one note, on
+              purpose, since /login, /signup and /preorder stay out of search.
             </p>
           </div>
           <div data-reveal className="mt-12 [--d:220]">

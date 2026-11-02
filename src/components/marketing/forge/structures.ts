@@ -5,8 +5,8 @@ import { DEEP_PAGES, HOME_PAGE, LINKED_PAGES, NOINDEX_PAGES } from "./site-pages
  * nouns of its sentence with page cards, and some cards carry their words
  * (labels, drawn by the engine in the same space), so a first-time visitor
  * reads it without a caption:
- *   0 galaxy: septune.dev's 93 pages as a turning galaxy (the hero)
- *   1 tree:   the same 93 pages as a sitemap, read from the top
+ *   0 galaxy: septune.dev's 94 pages as a turning galaxy (the hero)
+ *   1 tree:   the same 94 pages as a sitemap, read from the top
  *   2 gate:   pages falling through the pull-request check; the one that
  *             would leave Google stops on it
  *   3 code:   the page's file; the noindex line slides out, the file closes up
@@ -273,8 +273,8 @@ const ARM_WIND = 1.7;
 const armAngle = (arm: number, rho: number) => arm * (Math.PI / 2) + 0.35 + ARM_WIND * (rho - ARM_IN);
 
 /**
- * septune.dev as a galaxy, the hero: its 93 pages as tiles lying on a disc,
- * the home page at the core, the 16 pages it links to on a ring around it,
+ * septune.dev as a galaxy, the hero: its 94 pages as tiles lying on a disc,
+ * the home page at the core, the 17 pages it links to on a ring around it,
  * the 76 deeper pages along four arms, outwards in crawl order. Dust follows
  * the arms, a bulge lights the core, a few stars float around. The shader
  * spins it and lifts a dome under the cursor; the engine lights the page
@@ -357,8 +357,8 @@ function galaxy(count: number): Structure {
 // ---------------------------------------------------------------- 1 · tree
 
 /**
- * septune.dev as Septune crawled it on 2026-11-01: 93 pages. The home page;
- * the 16 pages it links to, each card as wide as its name, in two rows by
+ * septune.dev as Septune crawled it on 2026-11-02: 94 pages. The home page;
+ * the 17 pages it links to, each card as wide as its name, in two rows by
  * kind (pages and frameworks, then tools, legal and account); then the 76
  * pages one step deeper (the agent guide, the 69 check pages, the six
  * framework guides) as small tiles. Crawl order is breadth first, which is
@@ -373,7 +373,7 @@ const TREE_ROWS: { group?: string; pages: string[] }[][] = [
   ],
   [
     { group: "/tools/", pages: ["/tools/noindex-checker", "/tools/llms-txt-generator"] },
-    { pages: ["/privacy", "/terms"] },
+    { pages: ["/privacy", "/terms", "/legal"] },
     { group: "noindex, on purpose", pages: ["/login", "/signup", "/preorder"] },
   ],
 ];
