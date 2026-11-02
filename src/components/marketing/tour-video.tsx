@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 /**
  * The 23-second overview video, on demand. The trigger is plain CSS and the
  * <video> element only mounts inside the open dialog, so the page fetches
- * nothing for it until someone asks (the file is 4.5 MB).
+ * nothing for it until someone asks (the file is 4.7 MB).
  * Sources and the regenerate steps live outside the repo (Desktop/Septune-video).
  */
 export function TourVideo({ className }: { className?: string }) {
@@ -53,7 +53,7 @@ export function TourVideo({ className }: { className?: string }) {
           className,
         )}
       >
-        {/* The logo square turned into a play button, over the molten glow the glass plates carry. */}
+        {/* The logo square turned into a play button, over a glow of the accent. */}
         <span className="relative grid h-9 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-code transition-colors duration-200 group-hover:border-molten/60">
           <span
             aria-hidden
@@ -112,15 +112,17 @@ export function TourVideo({ className }: { className?: string }) {
               className="block aspect-video w-full bg-bg"
             />
             <p id="tour-video-desc" className="sr-only">
-              No narration. On screen: a template change adds a robots noindex tag and
-              /pricing drops out of Google; a refactor drops the canonical from 40 pages,
-              a CDN rule sends X-Robots-Tag noindex on every page, a page starts returning
-              404, found in production weeks later. Septune catches it in the pull request:
-              the check fails, score 91 to 84, and the fix goes to your AI editor. Three
-              checkpoints (before you push, in the pull request, after the merge), one engine
-              of 69 checks, 21 crawlers including AI search, fixes for Next.js, Nuxt, Astro,
-              SvelteKit, Remix and Vite + React. Ship fast. Stay indexed. Audit a URL, free,
-              no signup, at septune.dev/audit.
+              No narration. On screen: a robots noindex tag is typed into the head of
+              /pricing. Septune reads septune.dev the way Googlebot finds it, and /pricing
+              drops out: 93 pages read in 8 seconds. It checks where SEO breaks, in your
+              editor, in every pull request and in production. The pull request check
+              fails: /pricing became noindex, /docs canonical changed, score 91 to 84. The
+              fix goes to your AI editor and /pricing can be indexed again. Three
+              checkpoints (before you push, in the pull request, after the merge), 69
+              checks from indexing to structured data, one site watched for free, a ready
+              patch for Next.js, Nuxt, Astro, SvelteKit and Vite + React. Ship fast. Stay
+              indexed. See what Septune finds on your site: no signup, 3 pages free, 69
+              checks.
             </p>
           </>
         )}
