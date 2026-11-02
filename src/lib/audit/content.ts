@@ -41,6 +41,35 @@ function jaccard(a: Set<number>, b: Set<number>): number {
   return inter / (a.size + b.size - inter);
 }
 
+/**
+ * The words of each text that aren't template: any run of BOILER_K words
+ * that recurs on at least BOILER_SHARE of the pages (menu, footer, the
+ * headings every page of a section repeats) is set aside. What remains is
+ * what the page is about. A page left with almost nothing keeps its text.
+ */
+const BOILER_K = 6;
+const BOILER_SHARE = 0.3;
+export function withoutBoilerplate(texts: string[]): string[] {
+  const words = texts.map((t) => t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean));
+  if (texts.length < 5) return words.map((w) => w.join(" "));
+  const runs = words.map((ws) => {
+    const hs: number[] = [];
+    for (let i = 0; i + BOILER_K <= ws.length; i++) hs.push(hash(ws.slice(i, i + BOILER_K).join(" ")));
+    return hs;
+  });
+  const pagesWith = new Map<number, number>();
+  for (const hs of runs) for (const h of new Set(hs)) pagesWith.set(h, (pagesWith.get(h) ?? 0) + 1);
+  const limit = Math.max(3, Math.ceil(texts.length * BOILER_SHARE));
+  return words.map((ws, p) => {
+    const keep = ws.map(() => true);
+    runs[p]!.forEach((h, i) => {
+      if ((pagesWith.get(h) ?? 0) >= limit) for (let k = i; k < i + BOILER_K; k++) keep[k] = false;
+    });
+    const own = ws.filter((_, i) => keep[i]);
+    return (own.length >= 20 ? own : ws).join(" ");
+  });
+}
+
 export interface DuplicateCluster {
   paths: string[];
   similarity: number;
@@ -103,11 +132,16 @@ export function analyzeContent(
   }
 
   // ── Semantic internal-link suggestions (local embeddings) ─────────
-  const vectors = pages.map((p) =>
-    embed(`${p.title ?? ""} ${p.headings.map((h) => h.text).join(" ")} ${p.textContent}`),
+  // Compared on what each page is about, not on the template it shares: on a
+  // site where every page carries the same menu, footer and section headings,
+  // whole text made every page "related" to every other.
+  const own = withoutBoilerplate(
+    pages.map((p) => `${p.title ?? ""} ${p.headings.map((h) => h.text).join(" ")} ${p.textContent}`),
   );
+  const vectors = own.map((text) => embed(text));
   const linkSuggestions: LinkSuggestion[] = [];
   const SIM_THRESHOLD = 0.55;
+  const NEAREST = 3;
   for (let i = 0; i < pages.length; i++) {
     // Rank other pages by topical similarity to page i.
     const ranked: { j: number; sim: number }[] = [];
@@ -117,10 +151,14 @@ export function analyzeContent(
       if (sim >= SIM_THRESHOLD) ranked.push({ j, sim });
     }
     ranked.sort((a, b) => b.sim - a.sim);
-    // Suggest the top 2 related pages that i doesn't already link to and
-    // that aren't near-duplicates of i (those are a different problem).
+    // Suggest, among page i's NEAREST closest pages, those it doesn't link to
+    // and that aren't near-duplicates of it (a different problem). Only the
+    // nearest: a page that already links to its closest topics is linked
+    // well, even when a large section of similar pages lies further down
+    // (before, the search went on until it found two unlinked pages, so a
+    // docs section of 69 pages always had suggestions left).
     let added = 0;
-    for (const { j, sim } of ranked) {
+    for (const { j, sim } of ranked.slice(0, NEAREST)) {
       if (added >= 2) break;
       const from = paths[i]!;
       const to = paths[j]!;

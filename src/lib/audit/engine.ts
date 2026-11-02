@@ -640,7 +640,16 @@ export function runDeterministicAudit(
   const hardToRead: { url: string; note?: string }[] = [];
   const stuffed: { url: string; note?: string }[] = [];
   // Light stemmer so "routing" in the body matches "routes" in the title.
-  const stem = (w: string) => w.replace(/(ing|ed|es|s)$/i, "");
+  // Both sides go through it, so it only has to agree with itself: "pages"
+  // and "page" both give "pag" (the old rule cut "es" off "pages" but left
+  // "page" whole, and flagged titles that said "Pages").
+  const stem = (w: string) => {
+    let s = w.toLowerCase();
+    if (/(ss|us|is)$/.test(s)) return s;
+    s = s.replace(/(ch|sh|x|z|s)es$/, "$1").replace(/s$/, "");
+    s = s.replace(/(ing|ed)$/, "");
+    return s.replace(/e$/, "");
+  };
   for (const [, pi] of intel.perPage) {
     if (pi.wordCount >= 200 && pi.topTerms.length >= 3) {
       // Word-boundary + stemmed match (not substring): does the title/H1
@@ -1428,11 +1437,19 @@ function dedupeUrls(urls: { url: string; note?: string }[]): { url: string; note
  * URL contributes a fraction of the rule's severity penalty (so a rule hitting
  * 1 page hurts less than one hitting 50), capped per rule.
  */
+/**
+ * Findings that describe a setup that is usually deliberate: still reported,
+ * so the owner can confirm it, but a correct site doesn't lose points for
+ * them (a sign-in page kept out of search is the right configuration).
+ */
+const INFORMATIONAL_RULES = new Set(["indexing-noindex-utility"]);
+
 function scoreCategories(issues: EngineIssue[], pageCount: number): Record<SeoCategory, number> {
   const scores = {} as Record<SeoCategory, number>;
   for (const cat of ALL_CATEGORIES) scores[cat] = 100;
   const denom = Math.max(1, pageCount);
   for (const issue of issues) {
+    if (INFORMATIONAL_RULES.has(issue.ruleId)) continue;
     const base = SEVERITY_PENALTY[issue.impact];
     // Fraction of pages affected (broken links etc. clamp at 1 page = small).
     const frac = Math.min(1, issue.affectedUrls.length / denom);
