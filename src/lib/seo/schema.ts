@@ -13,6 +13,7 @@
 import { config } from "@/lib/config";
 import { BILLING_OPEN, PRICING_TIERS } from "@/lib/pricing";
 import { RULE_CATALOG } from "@/lib/audit/catalog";
+import { LEGAL } from "@/lib/legal";
 
 const APP_URL = config.appUrl;
 const PRICE_CURRENCY = "EUR";
@@ -20,13 +21,23 @@ const PRICE_CURRENCY = "EUR";
 const DESCRIPTION =
   "Automated technical SEO for developers. Septune fails the pull request that would drop pages from Google and watches production after the merge.";
 
+// The profiles that are the same entity: the open-source CLI's repository
+// and its npm package (published as rankforge-cli, Septune's first name).
+// GitHub keeps redirecting the repository's old name after a rename.
+const SAME_AS = ["https://github.com/Barbudda/rankforge-cli", "https://www.npmjs.com/package/rankforge-cli"];
+
 const organization = {
   "@type": "Organization",
   "@id": `${APP_URL}/#organization`,
   name: "Septune",
   url: APP_URL,
-  logo: `${APP_URL}/icon.svg`,
+  // A raster logo: Google's logo and favicon surfaces don't read SVG.
+  logo: `${APP_URL}/icon-512.png`,
   description: DESCRIPTION,
+  sameAs: SAME_AS,
+  founder: { "@type": "Person", name: LEGAL.name },
+  email: LEGAL.email,
+  address: { "@type": "PostalAddress", addressLocality: "Sevrier", postalCode: "74320", addressCountry: "FR" },
 };
 
 const website = {

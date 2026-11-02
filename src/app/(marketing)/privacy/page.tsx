@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ProsePage, ProseBlock } from "@/components/marketing/prose-page";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbSchema } from "@/lib/seo/schema";
 import { PLAN_LIMITS } from "@/lib/pricing";
+import { LEGAL } from "@/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Privacy policy",
+  title: "Privacy policy: your email address and what we keep",
   description:
     "What Septune stores, why, who processes it and how to get it deleted. Written in plain language.",
   alternates: { canonical: "/privacy" },
@@ -24,7 +26,7 @@ export default function PrivacyPage() {
       />
       <ProsePage
         title="Privacy policy"
-        intro="Septune is an early-stage product run by a solo founder. This page says exactly what is stored, why, and who processes it, in plain language. Last updated: October 2026."
+        intro="Septune is an early-stage product run by a solo founder. This page says exactly what is stored, why, and who processes it, in plain language. Last updated: November 2026."
       >
         <ProseBlock heading="What we store">
           <p>
@@ -107,6 +109,13 @@ export default function PrivacyPage() {
         </ProseBlock>
         <ProseBlock heading="Deletion & contact">
           <p>
+            The data controller is {LEGAL.name}, {LEGAL.status}, SIREN {LEGAL.siren}, {LEGAL.address} (see the{" "}
+            <Link className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright" href="/legal">
+              legal notice
+            </Link>
+            ).
+          </p>
+          <p className="mt-3">
             Email <a className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright" href={`mailto:${CONTACT}`}>{CONTACT}</a>{" "}
             from your account address and your account and all associated data
             will be deleted. GDPR requests (access, rectification, erasure) go

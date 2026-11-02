@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default function LegalNoticePage() {
-  // Published only once the publisher's details are set (see src/lib/legal.ts).
+  // A guard kept for forks of this code: without a publisher, no page.
   if (!legalNoticeReady) notFound();
 
   const link = "text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright";
@@ -27,18 +27,16 @@ export default function LegalNoticePage() {
       <ProsePage title="Legal notice" intro="Mentions légales: who publishes this site and who hosts it.">
         <ProseBlock heading="Publisher">
           <p>
-            {LEGAL.name}
-            {LEGAL.status ? `, ${LEGAL.status}` : ""}
+            {LEGAL.name}, {LEGAL.status}
             <br />
             {LEGAL.address}
+          </p>
+          <p>
+            Registered in the Registre national des entreprises (RNE) on {LEGAL.registered}.
             <br />
-            SIRET {LEGAL.siret}
-            {LEGAL.vat && (
-              <>
-                <br />
-                {LEGAL.vat}
-              </>
-            )}
+            SIREN {LEGAL.siren} · SIRET {LEGAL.siret} · APE code {LEGAL.ape}
+            <br />
+            {LEGAL.vat}
           </p>
           <p>
             Contact:{" "}

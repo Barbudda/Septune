@@ -1,27 +1,28 @@
+import { CONTACT_EMAIL } from "@/lib/contact";
+
 /**
  * Publisher details for the legal notice (mentions légales, required in
  * France for a site that sells: LCEN art. 6 III). They come from the
- * environment so nothing here is invented.
- *
- * MISSING until the founder provides them (asked on 2026-10-25): the legal
- * name, business status, postal address and SIRET. Until LEGAL_NAME,
- * LEGAL_ADDRESS, LEGAL_SIRET and LEGAL_EMAIL are set, /legal returns 404 and
- * is linked from nowhere.
+ * founder's registration (Guichet unique, formality J00295677454, validated
+ * on 2026-10-28). Only what the law asks for a natural person who publishes
+ * professionally is shown: name, address, phone, email and the registration
+ * number. Nothing else from that record (birth details, social security)
+ * belongs on the site or in this file.
  */
-
 export const LEGAL = {
-  /** Individual or company name, e.g. "Jane Doe" or "Acme SAS". */
-  name: process.env.LEGAL_NAME ?? "",
-  /** e.g. "Entrepreneur individuel (micro-entreprise)". */
-  status: process.env.LEGAL_STATUS ?? "",
-  address: process.env.LEGAL_ADDRESS ?? "",
-  siret: process.env.LEGAL_SIRET ?? "",
-  /** VAT number, or the VAT-exemption mention that applies. */
-  vat: process.env.LEGAL_VAT ?? "",
-  email: process.env.LEGAL_EMAIL ?? "",
-  phone: process.env.LEGAL_PHONE ?? "",
-  /** Directeur de la publication; defaults to the publisher. */
-  director: process.env.LEGAL_DIRECTOR ?? "",
+  name: "Hugo Moëne",
+  status: "entrepreneur individuel (micro-entreprise)",
+  address: "60 chemin des Fours à Chaux, 74320 Sevrier, France",
+  siren: "132 159 203",
+  siret: "132 159 203 00018",
+  /** Registered in the Registre national des entreprises on this date. */
+  registered: "28 October 2026",
+  ape: "6201Z (computer programming)",
+  /** Franchise en base de TVA: no VAT is charged. */
+  vat: "VAT not applicable, article 293 B of the French tax code (CGI)",
+  email: CONTACT_EMAIL,
+  phone: "+33 6 24 51 09 09",
+  director: "Hugo Moëne",
 };
 
 /** The host, as stated in Vercel's terms (vercel.com/legal/terms, checked 2026-10-25). */

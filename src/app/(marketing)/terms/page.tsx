@@ -3,12 +3,14 @@ import { ProsePage, ProseBlock } from "@/components/marketing/prose-page";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbSchema } from "@/lib/seo/schema";
 import { BILLING_OPEN } from "@/lib/pricing";
+import Link from "next/link";
+import { LEGAL } from "@/lib/legal";
 
 /*
  * TO REVIEW before billing opens (asked on 2026-10-25): whether paid plans
  * are sold to consumers or to professionals only (consumers bring the EU
- * withdrawal right below and a mandatory consumer mediator in France), and
- * the publisher's legal details for /legal (src/lib/legal.ts). Have these
+ * withdrawal right below and a mandatory consumer mediator in France). The
+ * publisher's details are in src/lib/legal.ts since 2026-11-02. Have these
  * terms read by someone qualified; nothing here is legal advice.
  */
 
@@ -103,6 +105,14 @@ export default function TermsPage() {
         </ProseBlock>
         <ProseBlock heading="Liability & contact">
           <p>
+            Septune is published by {LEGAL.name}, {LEGAL.status}, SIREN {LEGAL.siren}, {LEGAL.address}. Full
+            details are in the{" "}
+            <Link className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright" href="/legal">
+              legal notice
+            </Link>
+            .
+          </p>
+          <p className="mt-3">
             The service is provided &quot;as is&quot; without warranty of any
             kind, to the maximum extent permitted by law. Questions:{" "}
             <a className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright" href={`mailto:${CONTACT}`}>{CONTACT}</a>.

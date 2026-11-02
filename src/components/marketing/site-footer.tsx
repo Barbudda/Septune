@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { legalNoticeReady } from "@/lib/legal";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
-export const CONTACT_EMAIL = "hugopoene74@gmail.com";
+export { CONTACT_EMAIL };
 
 const COLUMNS = [
   {
