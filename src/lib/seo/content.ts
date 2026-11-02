@@ -20,6 +20,8 @@ export type FrameworkPage = {
   updated: string;
   /** Framework-specific sections shown before the generic ones. */
   sections?: GuideSection[];
+  /** The H1, when the page's own words call for more than the framework's name. */
+  heading?: string;
 };
 
 /** Framework landing pages — slugs match the footer links. */
@@ -61,6 +63,8 @@ export const FRAMEWORK_PAGES: FrameworkPage[] = [
       "svelte:head management, +page load metadata and prerendered routes; each issue points at the +page.svelte or layout file most likely behind it.",
     metaApi: "<svelte:head> / load data",
     compare: ["nuxt", "nextjs"],
+    // The page is about routes and svelte:head; "SvelteKit" alone doesn't say it.
+    heading: "Technical SEO for SvelteKit routes and svelte:head, checked on every deploy",
     published: "2026-07-06",
     updated: "2026-10-31",
   },

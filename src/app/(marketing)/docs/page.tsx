@@ -9,7 +9,7 @@ import { RULE_PAGES, firstSentence, type RulePage } from "@/lib/audit/rule-docs"
 import { FIXABLE_RULE_IDS } from "@/lib/audit/deterministic-fix";
 
 export const metadata: Metadata = {
-  title: "Docs: every check Septune runs, and how to fix it",
+  title: "Docs: every check Septune runs on your pages",
   description: `The ${RULE_PAGES.length} technical SEO checks Septune runs on a site: what fails, what is measured, and how to fix it in Next.js, Nuxt, Astro or SvelteKit.`,
   alternates: { canonical: "/docs" },
 };

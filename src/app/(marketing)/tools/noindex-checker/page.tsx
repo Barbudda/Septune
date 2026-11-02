@@ -77,7 +77,11 @@ export default function NoindexCheckerPage() {
           <div className="mx-auto max-w-3xl">
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Where a noindex hides</h2>
             <p className="mt-3 text-fg-muted">
-              Most accidental noindexes don&apos;t come from someone typing one. They come with a deploy.
+              Most accidental noindexes don&apos;t come from someone typing one. They come with a deploy. The{" "}
+              <Link href="/docs/issues/indexing-noindex" className={link}>
+                noindex check page
+              </Link>{" "}
+              shows exactly what Septune reads and how to fix each source.
             </p>
             <dl className="mt-8 grid gap-4 sm:grid-cols-2">
               {WHERE.map(([t, d]) => (

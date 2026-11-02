@@ -25,10 +25,10 @@ export const RULE_DOC_DATA = {
     },
     "verify": "Run curl -s https://example.com/page | grep -io '<title[^>]*>[^<]*</title>' and check it prints a tag with text in it, then re-run the audit.",
     "related": [
-      "structure-h1-multiple",
       "indexing-canonical-missing",
       "meta-title-duplicate",
-      "meta-title-length"
+      "meta-title-length",
+      "meta-description-missing"
     ]
   },
   "meta-title-duplicate": {
@@ -199,7 +199,8 @@ export const RULE_DOC_DATA = {
     "related": [
       "indexing-noindex-utility",
       "indexing-robots-blocks-pages",
-      "indexing-sitemap-hygiene"
+      "indexing-sitemap-hygiene",
+      "indexing-html-lang-missing"
     ]
   },
   "indexing-noindex-utility": {
@@ -318,7 +319,8 @@ export const RULE_DOC_DATA = {
     "related": [
       "indexing-robots-blocks-pages",
       "indexing-noindex",
-      "framework-robots-no-sitemap"
+      "framework-robots-no-sitemap",
+      "indexing-robots-blocks-google"
     ]
   },
   "indexing-broken-page": {
@@ -971,7 +973,8 @@ export const RULE_DOC_DATA = {
     "verify": "Count the blocks in the raw HTML with curl -s https://example.com/page | grep -c 'application/ld+json', paste the block into the Schema Markup Validator (validator.schema.org) to confirm it parses, and re-run the audit.",
     "related": [
       "schema-invalid",
-      "schema-website-missing"
+      "schema-website-missing",
+      "indexing-html-lang-missing"
     ]
   },
   "schema-invalid": {
@@ -1023,7 +1026,8 @@ export const RULE_DOC_DATA = {
     "related": [
       "indexing-sitemap-gaps",
       "link-deep-pages",
-      "link-missing-internal-opportunities"
+      "link-missing-internal-opportunities",
+      "framework-sitemap-missing"
     ]
   },
   "link-deep-pages": {

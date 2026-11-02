@@ -5,7 +5,7 @@ import { breadcrumbSchema, techArticleSchema } from "@/lib/seo/schema";
 import { CHANGELOG } from "@/lib/seo/content";
 
 export const metadata: Metadata = {
-  title: "Changelog",
+  title: "Changelog: from RankForge to Septune",
   description:
     "What shipped in Septune, release by release. Audits, fixes, agents and the site itself.",
   alternates: { canonical: "/changelog" },

@@ -60,6 +60,16 @@ const TITLE_MAX = 65 - " · Septune".length;
 const SHORT_TITLES: Record<string, string> = {
   "indexing-noindex-utility": "Utility pages kept out of search with noindex",
   "indexing-robots-unavailable": "robots.txt answers with a server error",
+  // Titles in the words the pages use (Septune's content-keyword-alignment check).
+  "indexing-duplicate-content": "Near-duplicate pages: the same visible text twice",
+  "structure-h1-missing": "Pages with no <h1> heading",
+  // The page's example ("cheap flights to Paris") is most of its text.
+  "content-keyword-stuffing": 'Possible keyword stuffing: when "cheap flights" repeats',
+  "content-readability": "Hard-to-read content: long words, low Flesch score",
+  "perf-broken-assets": "CSS and JS files that fail to load",
+  "schema-missing": "Pages without JSON-LD structured data",
+  "schema-invalid": "JSON-LD missing what rich results require",
+  "framework-js-only-content": "Content missing from the HTML until JavaScript runs",
 };
 
 /** The <title> of a rule page, short enough to pass Septune's own check. */

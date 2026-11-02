@@ -100,7 +100,7 @@ export default async function FrameworkPage({
         })}
       />
       <JsonLd data={faqPageSchema(faqs)} />
-      <ProsePage title={title} intro={fw.blurb}>
+      <ProsePage title={fw.heading ?? title} intro={fw.blurb}>
         <p className="text-xs text-fg-subtle">
           Published <time dateTime={fw.published}>{formatDay(fw.published)}</time>
           {fw.updated !== fw.published && (

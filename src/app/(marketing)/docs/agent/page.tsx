@@ -100,7 +100,7 @@ export default function AgentDocsPage() {
           <p className="mt-3">
             It needs Node.js 18 or later. The{" "}
             <a
-              href="https://github.com/Barbudda/septune#2-in-your-ai-editor-the-agent"
+              href="https://github.com/Barbudda/rankforge-cli#2-in-your-ai-editor-the-agent"
               className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright"
             >
               README

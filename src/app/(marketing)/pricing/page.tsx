@@ -7,7 +7,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { faqPageSchema, breadcrumbSchema } from "@/lib/seo/schema";
 import { PRICING_FAQS } from "@/lib/seo/content";
 
-const TITLE = "Pricing";
+const TITLE = "Pricing: Free, Pro and Studio plans";
 const DESCRIPTION =
   "Septune pricing: free audits, CLI and CI gate; paid plans for daily SEO monitoring with alerts when a deploy breaks something.";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: "/pricing" },
   openGraph: {
-    title: "Pricing · Septune",
+    title: `${TITLE} · Septune`,
     description: DESCRIPTION,
     url: "/pricing",
     siteName: "Septune",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pricing · Septune",
+    title: `${TITLE} · Septune`,
     description: DESCRIPTION,
   },
 };

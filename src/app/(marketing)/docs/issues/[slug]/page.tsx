@@ -6,6 +6,7 @@ import { ProsePage, ProseBlock } from "@/components/marketing/prose-page";
 import { JsonLd } from "@/components/seo/json-ld";
 import { formatDay } from "@/lib/utils";
 import { breadcrumbSchema, techArticleSchema } from "@/lib/seo/schema";
+import { guidesForRule, nearestTo, type RelatedLink } from "@/lib/seo/related";
 import {
   DOC_FRAMEWORKS,
   LEGACY_DOC_SLUGS,
@@ -77,7 +78,17 @@ export default async function IssueDocPage({ params }: { params: Promise<{ slug:
     if (same) same.names.push(fw.name);
     else patches.push({ names: [fw.name], files: fix.filesChanged.join(", "), diff: fix.diff });
   }
-  const related = rule.related.map((id) => getRulePage(id)).filter((r) => r !== undefined);
+  // The checks chosen by hand, then the pages nearest in topic and the
+  // guides for this check: each page links to what it is closest to.
+  const chosen = rule.related.map((id) => getRulePage(id)).filter((r) => r !== undefined);
+  const related: RelatedLink[] = [];
+  for (const link of [
+    ...chosen.map((r) => ({ path: `/docs/issues/${r.id}`, title: r.title })),
+    ...nearestTo(rule.id),
+    ...guidesForRule(rule.id),
+  ]) {
+    if (!related.some((r) => r.path === link.path)) related.push(link);
+  }
   const path = `/docs/issues/${rule.id}`;
 
   return (
@@ -168,12 +179,12 @@ export default async function IssueDocPage({ params }: { params: Promise<{ slug:
         </ProseBlock>
 
         {related.length > 0 && (
-          <ProseBlock heading="Related checks">
+          <ProseBlock heading="Related checks and guides">
             <ul className="space-y-2">
               {related.map((r) => (
-                <li key={r.id}>
+                <li key={r.path}>
                   <Link
-                    href={`/docs/issues/${r.id}`}
+                    href={r.path}
                     className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright"
                   >
                     {r.title}

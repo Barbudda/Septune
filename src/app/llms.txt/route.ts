@@ -35,7 +35,7 @@ export function GET() {
     "",
     "## Open source",
     "",
-    "- [septune on GitHub](https://github.com/Barbudda/septune): the CLI, the GitHub Action, the MCP server and the Claude Code plugin, MIT-licensed.",
+    "- [septune on GitHub](https://github.com/Barbudda/rankforge-cli): the CLI, the GitHub Action, the MCP server and the Claude Code plugin, MIT-licensed.",
     "- [septune on npm](https://www.npmjs.com/package/septune): `npx septune audit <url>`.",
     "",
   ];
