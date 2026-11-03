@@ -38,3 +38,6 @@ next-env.d.ts
 
 # cli build output (built at publish time)
 cli/dist/
+
+# Vidéos de référence d'Hugo pour la direction artistique (5 Mo, contenu tiers) : locales seulement
+/design_videos/
