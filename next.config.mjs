@@ -4,6 +4,12 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
+    key: "Permissions-Policy",
+    // The site uses none of these APIs: closed for it and any third-party
+    // iframe. Payment too: Stripe Checkout is a redirect, not an embed.
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+  },
+  {
     key: "Content-Security-Policy",
     // Baseline: block embedding + object/plugin content. A full script-src
     // policy needs nonce plumbing through Next — deferred deliberately.
