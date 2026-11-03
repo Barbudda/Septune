@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Barbudda/septune",
+  "title": "Septune",
+  "description": "Technical SEO and AI-search audit of any site, with fixes for your framework. No API key.",
+  "repository": {
+    "url": "https://github.com/Barbudda/septune",
+    "source": "github"
+  },
+  "websiteUrl": "https://www.septune.dev",
+  "version": "{{VERSION}}",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "septune",
+      "version": "{{VERSION}}",
+      "transport": { "type": "stdio" },
+      "packageArguments": [{ "type": "positional", "value": "mcp" }]
+    }
+  ]
+}
