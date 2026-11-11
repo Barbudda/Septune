@@ -1,5 +1,6 @@
 import type { CrawledPage } from "./types";
 import { isNoindex } from "./robots-directives";
+import { renderParityCheck, type RenderOutcome } from "./render-parity";
 
 /**
  * GEO — "generative engine optimization" readiness, measured deterministically.
@@ -224,7 +225,7 @@ const QUESTION_RE = /\?\s*$|^(how|what|why|when|where|which|who|can|does|is|are|
 // ── the audit ────────────────────────────────────────────────────────
 export function runGeoAudit(
   pages: CrawledPage[],
-  site: { robotsTxt?: string; hasLlmsTxt?: boolean; llmsTxt?: string },
+  site: { robotsTxt?: string; hasLlmsTxt?: boolean; llmsTxt?: string; /** Set by the CLI's opt-in `--render`. */ rendered?: RenderOutcome },
 ): GeoReport {
   // Content checks only consider pages meant to be found: a noindex login or
   // checkout page isn't a citation candidate, so it must not drag the score.
@@ -305,6 +306,9 @@ export function runGeoAudit(
     fix: jsOnly.length ? "Server-render or prerender these routes (SSR/SSG) so the text is in the initial HTML." : undefined,
     pages: jsOnly.map((p) => pathOf(p.url)),
   });
+
+  const parity = renderParityCheck(ok, site.rendered);
+  if (parity) checks.push(parity);
 
   // 3) Citable ───────────────────────────────────────────────────────
   const types = ok.map((p) => ({ p, t: jsonLdTypes(p) }));

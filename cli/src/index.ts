@@ -10,6 +10,8 @@ import { probeResources } from "@/lib/audit/resource-probe";
 import { FIXABLE_RULE_IDS, generateDeterministicFix } from "@/lib/audit/deterministic-fix";
 import { RULE_CATALOG } from "@/lib/audit/catalog";
 import { runGeoAudit, buildLlmsTxt, type GeoReport } from "@/lib/audit/geo";
+import type { RenderOutcome } from "@/lib/audit/render-parity";
+import { renderPages } from "./render";
 import { computeOverallScore } from "@/lib/scoring";
 import { CATEGORY_WEIGHTS } from "@/lib/seo/constants";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -128,6 +130,8 @@ interface Scan {
   pages: CrawledPage[];
   siteFiles: SiteFiles & { crawlComplete: boolean; vitals?: VitalsReport | null };
   blockedByRobots: string[];
+  /** Set by --render. */
+  rendered?: RenderOutcome;
 }
 
 /**
@@ -152,7 +156,8 @@ async function scanSite(url: string, args: Args, defaultPages: number): Promise<
   if (res.pages.length === 0 && res.blockedByRobots.length) {
     fail("robots.txt disallows SeptuneBot on this URL. If it's your own site, re-run with --ignore-robots.");
   }
-  return { url, pages: res.pages, siteFiles: { ...siteFiles, crawlComplete: res.complete }, blockedByRobots: res.blockedByRobots };
+  const rendered = args.flags.render === true ? await renderPages(res.pages) : undefined;
+  return { url, pages: res.pages, siteFiles: { ...siteFiles, crawlComplete: res.complete }, blockedByRobots: res.blockedByRobots, rendered };
 }
 
 /** --vitals: CrUX field data (opt-in, needs CRUX_API_KEY or --crux-key). */
@@ -168,7 +173,7 @@ async function maybeVitals(url: string, args: Args, quiet: boolean): Promise<Vit
 function snapshotOf(scan: Scan, framework: Framework, resources?: Awaited<ReturnType<typeof probeResources>>) {
   const engine = runDeterministicAudit(synthRepo(scan.url, framework), scan.pages, scan.siteFiles, resources);
   const overall = weightedOverall(engine.categoryScores);
-  const geo = runGeoAudit(scan.pages, scan.siteFiles);
+  const geo = runGeoAudit(scan.pages, { ...scan.siteFiles, rendered: scan.rendered });
   const snapshot = buildSnapshot({ url: scan.url, pages: scan.pages, engine, overall, geo, siteFiles: scan.siteFiles });
   return { engine, overall, geo, snapshot };
 }
@@ -506,8 +511,8 @@ async function cmdGeo(args: Args) {
   const url = asUrl(args._[1]);
   const json = args.flags.json === true;
   if (!json) process.stderr.write(`${c.dim(`checking AI-search readiness of ${url}…`)}\n`);
-  const { pages, siteFiles } = await scanSite(url, args, 12);
-  const geo = runGeoAudit(pages, siteFiles);
+  const { pages, siteFiles, rendered } = await scanSite(url, args, 12);
+  const geo = runGeoAudit(pages, { ...siteFiles, rendered });
   if (json) {
     process.stdout.write(JSON.stringify({ url, pagesCrawled: pages.length, ...geo }, null, 2) + "\n");
   } else {
@@ -775,6 +780,7 @@ ${c.bold("Flags")}
   --save file      write a snapshot (audit) for diff / watch
   --fail-on gate   diff & watch: critical (default) | new (any new issue) | none
   --markdown file  audit, diff & watch: append a Markdown summary (e.g. $GITHUB_STEP_SUMMARY)
+  --render         audit & geo: also render up to 25 pages in the Chrome or Edge on this machine and compare with the raw HTML (needs playwright-core)
   --vitals         add Core Web Vitals from Google CrUX (sends the URL to Google)
   --crux-key key   CrUX API key for --vitals / vitals (default: CRUX_API_KEY)
   --update         watch: replace the baseline with this run once it's compared
