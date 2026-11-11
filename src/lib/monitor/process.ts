@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Framework, Plan } from "@/types";
 import { PLAN_LIMITS } from "@/lib/pricing";
 import { isSnapshot, runSiteCheck } from "./check";
+import { annotateDiff } from "@/lib/gsc/annotate";
+import { fetchMonitorTraffic, recordMonitorTraffic } from "@/lib/gsc/monitor";
 import { levelReached, sendEmail, sendWebhook, type AlertContent, type AlertLevel } from "./alerts";
 
 /**
@@ -84,7 +86,10 @@ export async function processMonitor(
       previous,
       deadlineMs: opts.trigger === "manual" ? 90_000 : 120_000,
     });
-    const diff = result.diff;
+    // Search Console, when the owner connected it: clicks on each change, stored with the run.
+    const traffic = await fetchMonitorTraffic(monitor.user_id, site.productionUrl);
+    const diff = result.diff && traffic ? annotateDiff(result.diff, traffic.index) : result.diff;
+    if (traffic) await recordMonitorTraffic(monitor.user_id, monitor.repo_id, traffic);
     const level: AlertLevel = diff ? diff.level : "none";
     const summary = diff
       ? diff.summary
