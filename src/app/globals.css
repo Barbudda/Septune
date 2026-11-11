@@ -717,18 +717,12 @@
     outline: 2px solid var(--color-lime);
     outline-offset: 2px;
   }
-  .stage-col[data-active="read"] a[data-chip="read"],
-  .stage-col[data-active="catch"] a[data-chip="catch"],
-  .stage-col[data-active="fix"] a[data-chip="fix"],
-  .stage-col[data-active="watch"] a[data-chip="watch"] {
+  .stage-chips a[aria-current="step"] {
     border-color: var(--color-lime);
     background: var(--color-lime);
     color: var(--color-navy);
   }
-  .stage-col[data-active="read"] a[data-chip="read"] span,
-  .stage-col[data-active="catch"] a[data-chip="catch"] span,
-  .stage-col[data-active="fix"] a[data-chip="fix"] span,
-  .stage-col[data-active="watch"] a[data-chip="watch"] span {
+  .stage-chips a[aria-current="step"] span {
     color: inherit;
   }
   /* On phones the canvas has to sit above the pinned band (it is z 20). */
@@ -1099,4 +1093,306 @@ body:has(.forge-ui) {
 }
 html:has(.forge-ui) {
   scroll-padding-top: 6rem;
+}
+
+/* ── Product views (2026-11-11): the panel beside the steps shows the tool
+   in use, one window per feature, instead of a figure of points. Light
+   windows on the blue sky, like screenshots, so each feature reads at a
+   glance. They play once (data-play="on"), wait hidden before that
+   ("wait"), and the server HTML and reduced motion get the end ("end"). */
+@layer components {
+  .stage-figure {
+    position: relative;
+  }
+  .pv-slot {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 2.5rem 2rem 1.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px) scale(0.985);
+    transition:
+      opacity 380ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 380ms;
+  }
+  .pv-slot[data-shown] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 120ms, 120ms, 0s;
+  }
+  /* A grid item takes its content's width by default: the windows' tables
+     and code would push the page wider than a phone. */
+  .step-text {
+    min-width: 0;
+  }
+  .pv-inline {
+    min-width: 0;
+    margin-top: 2rem;
+    border-radius: 20px;
+    padding: 1.25rem 0.75rem;
+    background: linear-gradient(to bottom in oklab, oklch(35% 0.175 268), oklch(46% 0.23 266));
+  }
+  .pv-window {
+    width: 100%;
+    max-width: 38rem;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--color-surface);
+    color: var(--color-fg);
+    box-shadow:
+      0 1px 0 oklch(100% 0 0 / 0.6) inset,
+      0 30px 60px -30px oklch(18% 0.1 268 / 0.7);
+  }
+  .pv-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-soft);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--color-fg-muted);
+  }
+  .pv-lights {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .pv-lights i {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: oklch(23.2% 0.073 267 / 0.16);
+  }
+  .pv-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-fg-muted);
+  }
+  .pv-table th {
+    padding: 0.5rem 1rem 0.375rem;
+    text-align: left;
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--color-fg-subtle);
+  }
+  .pv-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.4375rem 1rem;
+    border-top: 1px solid var(--color-border-soft);
+  }
+  /* The PR comment's table sizes to its words: the change must stay whole. */
+  .pv-table--flush {
+    table-layout: auto;
+  }
+  .pv-table--flush td {
+    padding-inline: 0 0.75rem;
+  }
+  .pv-table--flush td:last-child {
+    padding-right: 0;
+  }
+  .pv-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    margin-right: 0.25rem;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .pv-dot--ok {
+    background: var(--color-signal);
+  }
+  .pv-dot--bad {
+    background: var(--color-danger);
+    box-shadow: 0 0 0 3px oklch(48.5% 0.18 27 / 0.18);
+  }
+  .pv-dot--warn {
+    background: var(--color-amber);
+  }
+  .pv-dot--idle {
+    background: oklch(23.2% 0.073 267 / 0.25);
+  }
+  .pv-spin {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 2px solid oklch(49% 0.13 48 / 0.3);
+    border-top-color: var(--color-amber);
+    animation: pv-spin 800ms linear infinite;
+  }
+  .pv-meter {
+    display: block;
+    height: 3px;
+    margin-top: 0.3125rem;
+    border-radius: 999px;
+    background: var(--color-border-soft);
+    overflow: hidden;
+  }
+  .pv-meter i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-ultramarine);
+    transform-origin: left;
+  }
+  .pv-code {
+    margin: 0;
+    padding: 0.875rem 1rem;
+    overflow-x: auto;
+    background: var(--color-bg-soft);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--color-fg);
+  }
+  /* The line at fault: marked first, then struck out as a diff, and kept so
+     the fix stays readable once the window has played. */
+  .pv-del {
+    position: relative;
+    display: block;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    background: oklch(91.1% 0.195 118 / 0.45);
+    transition:
+      background-color 300ms ease,
+      color 300ms ease,
+      text-decoration-color 300ms ease;
+    text-decoration: line-through transparent;
+  }
+  .pv-del::before {
+    content: "";
+    position: absolute;
+    left: 0.375rem;
+  }
+  .pv-del.is-gone {
+    background: oklch(48.5% 0.18 27 / 0.12);
+    color: var(--color-danger);
+    text-decoration-color: oklch(48.5% 0.18 27 / 0.6);
+  }
+  .pv-del.is-gone::before {
+    content: "-";
+  }
+  .pv-term {
+    padding: 0.875rem 1rem;
+    background: var(--color-navy);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .pv-merge {
+    flex-shrink: 0;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    height: 1.875rem;
+    padding-inline: 0.75rem;
+    border-radius: 6px;
+    background: var(--color-signal);
+    color: oklch(100% 0 0);
+    font-size: 12.5px;
+    font-weight: 600;
+    transition: background-color 300ms ease, color 300ms ease;
+  }
+  .pv-merge[data-blocked] {
+    background: oklch(23.2% 0.073 267 / 0.1);
+    color: var(--color-fg-subtle);
+  }
+  .pv-site:not([data-live]) {
+    color: var(--color-fg-subtle);
+  }
+  .pv-site:not([data-live]) span {
+    color: var(--color-fg-subtle);
+  }
+  .pv-spark {
+    width: 5.5rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+  .pv-spark polyline {
+    fill: none;
+    stroke: var(--color-ultramarine);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+  }
+  .pv-alert {
+    border-left: 3px solid var(--color-danger);
+    padding: 0.125rem 0 0.125rem 0.875rem;
+  }
+  .pv-reveal {
+    display: grid;
+    grid-template-rows: 1fr;
+  }
+  .pv-reveal > * {
+    min-height: 0;
+  }
+
+  /* Before its run: the parts that arrive are hidden. */
+  [data-play="wait"] .pv-in,
+  [data-play="wait"] .pv-meter i,
+  [data-play="on"] .pv-reveal:not(.is-on),
+  [data-play="wait"] .pv-reveal {
+    opacity: 0;
+  }
+  [data-play="wait"] .pv-meter i {
+    transform: scaleX(0);
+  }
+  [data-play="on"] .pv-reveal {
+    transition: opacity 420ms ease;
+  }
+  [data-play="on"] .pv-in {
+    animation: pv-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 170ms + 150ms);
+  }
+  [data-play="on"] .pv-meter i {
+    animation: pv-fill 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 80ms + 900ms);
+  }
+  [data-play="on"] .pv-spark polyline {
+    stroke-dasharray: 220;
+    animation: pv-draw 1400ms cubic-bezier(0.22, 1, 0.36, 1) both 400ms;
+  }
+
+  @keyframes pv-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes pv-fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes pv-draw {
+    from {
+      stroke-dashoffset: 220;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes pv-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pv-spin {
+      animation: none;
+    }
+  }
 }

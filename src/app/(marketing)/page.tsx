@@ -4,7 +4,8 @@ import { Plus } from "lucide-react";
 import { ForgeField } from "@/components/marketing/forge/forge-field";
 import { Letters, plain } from "@/components/marketing/forge/letters";
 import { Reveal } from "@/components/marketing/forge/reveal";
-import { finalReadout, type Step } from "@/components/marketing/forge/scenes";
+import { InlineView, StoryPanel } from "@/components/marketing/product-views";
+import { VIEW_LABELS, type View } from "@/components/marketing/views";
 import { OwnReport } from "@/components/marketing/own-report";
 import { CONTACT_EMAIL } from "@/components/marketing/site-footer";
 import { TourVideo } from "@/components/marketing/tour-video";
@@ -49,46 +50,39 @@ const HERO = [{ text: "Ship fast." }, { text: "Stay indexed.", em: true, br: tru
 const TEXT_LINK =
   "font-mono text-[13px] text-fg underline decoration-ultramarine/40 underline-offset-[6px] transition-colors duration-200 hover:text-ultramarine hover:decoration-ultramarine";
 
-type StepCopy = { step: Step; n: string; label: string; title: { text: string; em?: boolean }[] };
+type StepCopy = { view: View; n: string; title: { text: string; em?: boolean }[] };
 
-/** The step's number, name and headline, then its own content. */
-function StepText({ copy, children }: { copy: StepCopy; children: React.ReactNode }) {
-  const id = `${copy.step}-title`;
-  return (
-    <div className="step-text">
-      <p className="step-label" data-reveal>
-        <span className="step-num">{copy.n}</span>
-        {copy.label}
-      </p>
-      <h2 id={id} aria-label={plain(copy.title)} data-reveal className="step-title [--d:60]">
-        <Letters parts={copy.title} />
-      </h2>
-      {children}
-      <p className="readout" data-reveal style={{ "--d": 420 } as React.CSSProperties}>
-        <span aria-hidden className="readout-dot" />
-        <span data-forge-readout aria-live="off">
-          {finalReadout(copy.step)}
-        </span>
-      </p>
-    </div>
-  );
-}
-
-/** A step's text; its figure is drawn in the shared stage (the panel beside it, or the band above it on phones). */
+/**
+ * One feature per step: its name, a line that says why it matters, then its
+ * own content. Beside it on large screens the panel shows the feature in use
+ * (product-views.tsx); on small screens that window sits under the text.
+ */
 function StepBlock({ copy, children }: { copy: StepCopy; children: React.ReactNode }) {
+  const id = `${copy.view}-title`;
   return (
-    <article id={copy.step} data-forge-step={copy.step} aria-labelledby={`${copy.step}-title`} className="step-block container-rf">
-      <StepText copy={copy}>{children}</StepText>
+    <article id={copy.view} data-story-step={copy.view} aria-labelledby={id} className="step-block container-rf">
+      <div className="step-text">
+        <p className="step-label" data-reveal>
+          <span className="step-num">{copy.n}</span>
+          {VIEW_LABELS[copy.view]}
+        </p>
+        <h2 id={id} aria-label={plain(copy.title)} data-reveal className="step-title [--d:60]">
+          <Letters parts={copy.title} />
+        </h2>
+        {children}
+        <InlineView view={copy.view} />
+      </div>
     </article>
   );
 }
 
-const STEPS: Record<Step, StepCopy> = {
-  hero: { step: "hero", n: "", label: "", title: [] },
-  read: { step: "read", n: "01", label: "Read", title: [{ text: "It reads your site" }, { text: "the way Googlebot finds it.", em: true }] },
-  catch: { step: "catch", n: "02", label: "Catch", title: [{ text: "It fails the pull request" }, { text: "that would drop pages from Google.", em: true }] },
-  fix: { step: "fix", n: "03", label: "Fix", title: [{ text: "Each fix goes" }, { text: "to your AI editor.", em: true }] },
-  watch: { step: "watch", n: "04", label: "Watch", title: [{ text: "One site watched" }, { text: "for free.", em: true }] },
+/* Headlines are the sentence a founder would repeat; the body says how. */
+const STEPS: Record<View, StepCopy> = {
+  crawl: { view: "crawl", n: "01", title: [{ text: "If Googlebot can't reach it," }, { text: "it doesn't exist.", em: true }] },
+  pr: { view: "pr", n: "02", title: [{ text: "The merge that drops pages" }, { text: "never ships.", em: true }] },
+  fix: { view: "fix", n: "03", title: [{ text: "Your AI editor gets the proof." }, { text: "You get the fix.", em: true }] },
+  monitor: { view: "monitor", n: "04", title: [{ text: "Rankings fade slowly." }, { text: "Pages vanish overnight.", em: true }] },
+  ai: { view: "ai", n: "05", title: [{ text: "ChatGPT can't cite" }, { text: "what it can't read.", em: true }] },
 };
 
 export default function LandingPage() {
@@ -118,18 +112,14 @@ export default function LandingPage() {
         <div className="hero-words container-rf relative z-10 flex min-h-[100svh] flex-col justify-end pt-[76px] pb-10 lg:pb-14">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-end lg:gap-14">
             <div data-forge-hole>
-              <p className="hero-pill">
-                <span aria-hidden className="size-1.5 rounded-full bg-lime" />
-                technical SEO, on every deploy
-              </p>
               <h1 id="hero-title" aria-label={plain(HERO)} className="hero-title">
                 <Letters parts={HERO} />
               </h1>
             </div>
             <div data-forge-hole className="lg:pb-2">
               <p className="text-lg leading-relaxed text-on-blue md:text-xl">
-                Septune crawls your site like a search engine and checks it where SEO breaks: in your editor, in every
-                pull request, and in production.
+                The SEO guard for teams that deploy every day. It crawls like Google, blocks the pull request that would
+                drop pages, and watches production.
               </p>
               <form action="/audit" method="get" className="mt-7">
                 <label htmlFor="hero-url" className="sr-only">
@@ -154,7 +144,7 @@ export default function LandingPage() {
               </form>
               <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <p className="font-mono text-[13px] text-on-blue-muted">
-                  no signup · 3 pages free · {CHECKS} checks · every finding cites its evidence
+                  no signup · 3 pages free
                 </p>
                 <TourVideo className="tour-on-blue" />
               </div>
@@ -163,100 +153,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── The four steps: text on paper, the figure in the panel beside it ── */}
-      <section id="how-it-works" aria-label="How Septune works" className="story relative">
-        <div className="story-stage">
+      {/* ── Five features: the text on paper, the feature in use in the panel beside it ── */}
+      <section id="how-it-works" aria-label="What Septune does" className="story relative">
+        <div className="story-stage max-lg:hidden">
           <div className="story-stage-grid container-rf">
             <div className="stage-spacer" />
-            <div data-forge-panel className="stage-col">
-              <div aria-hidden className="sky-field sky-field--panel" />
-              {/* The particles are masked to this area only, never over the chips below it. */}
-              <div aria-hidden data-forge-region data-forge-stage="read catch fix watch" className="stage-figure" />
-              <nav aria-label="Steps" className="stage-chips">
-                {(["read", "catch", "fix", "watch"] as const).map((s) => (
-                  <a key={s} href={`#${s}`} data-chip={s}>
-                    <span>{STEPS[s].n}</span> {STEPS[s].label}
-                  </a>
-                ))}
-              </nav>
-            </div>
+            <StoryPanel />
           </div>
         </div>
 
         <div className="story-steps">
-          <StepBlock copy={STEPS.read}>
+          <StepBlock copy={STEPS.crawl}>
             <p data-reveal className="step-body [--d:160]">
-              Links first, then the URLs your sitemap lists, with robots.txt read by Google&apos;s rules. The pages it
-              reaches go through {CHECKS} checks, from indexing to structured data.
+              Septune follows your links, your sitemap and your robots.txt by Google&apos;s rules, then runs {CHECKS}{" "}
+              checks on every page it reaches. Each finding comes with its proof.
             </p>
-            <div id="features" data-reveal className="mt-7 [--d:260]">
-              <p className="font-mono text-[12.5px] text-fg-subtle">{CHECKS} checks, by family</p>
-              <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="What the checks cover">
-                {FAMILIES.map(([cat, n]) => (
-                  <li key={cat} className="chip">
-                    {FAMILY_NAMES[cat] ?? cat} <span className="text-fg-subtle tabular-nums">{n}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <p data-reveal className="mt-6 text-sm leading-relaxed text-fg-muted [--d:340]">
-              The figure is this site: septune.dev, crawled by Septune on 2 November 2026.{" "}
+            <ul id="features" data-reveal className="mt-7 flex flex-wrap gap-1.5 [--d:260]" aria-label="What the checks cover">
+              {FAMILIES.map(([cat, n]) => (
+                <li key={cat} className="chip">
+                  {FAMILY_NAMES[cat] ?? cat} <span className="text-fg-subtle tabular-nums">{n}</span>
+                </li>
+              ))}
+            </ul>
+            <p data-reveal className="mt-6 [--d:340]">
               <Link href="/docs" className={TEXT_LINK}>
                 read every check
               </Link>
             </p>
           </StepBlock>
 
-          <StepBlock copy={STEPS.catch}>
+          <StepBlock copy={STEPS.pr}>
             <p data-reveal className="step-body [--d:160]">
-              Septune checks every deploy at three points. In the pull request, the GitHub Action audits the preview
-              against production, page by page, and stops what would leave search.
+              On every pull request, the GitHub Action audits the preview against production, page by page. A page
+              that would leave Google fails the check, before anyone merges.
             </p>
-            <div data-reveal className="ui-card mt-7 font-mono text-[12.5px] leading-relaxed [--d:260]">
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-border px-4 py-2.5">
-                <span aria-hidden className="size-2 rounded-full bg-danger" />
-                <span className="font-semibold text-fg">Septune SEO check</span>
-                <span className="ml-auto font-semibold text-danger">failing</span>
-              </div>
-              <p className="flex gap-3 border-b border-border px-4 py-2">
-                <span className="w-16 shrink-0 font-semibold text-danger">critical</span>
-                <span className="text-fg">/pricing became noindex</span>
-              </p>
-              <p className="flex gap-3 border-b border-border px-4 py-2">
-                <span className="w-16 shrink-0 text-fg-muted">warning</span>
-                <span className="text-fg">/docs canonical changed</span>
-              </p>
-              <p className="px-4 py-2 text-fg-muted">score 91 to 84</p>
-            </div>
-            <ol data-reveal className="points mt-6 [--d:340]">
+            <ol data-reveal className="points mt-7 [--d:260]">
               <li>
-                <span>before you push</span>The CLI or the Claude Code plugin audits localhost.
+                <span>before the push</span>The CLI or the Claude Code plugin audits localhost.
               </li>
               <li>
-                <span>in the pull request</span>The check above, on the preview.
+                <span>in the pull request</span>Preview against production, one comment, one check.
               </li>
               <li>
-                <span>after the merge</span>Production on a schedule, alerts by email, Slack, Discord or webhook.
+                <span>after the merge</span>Production, on a schedule.
               </li>
             </ol>
           </StepBlock>
 
           <StepBlock copy={STEPS.fix}>
             <p data-reveal className="step-body [--d:160]">
-              Every finding comes with the affected URLs and the files to look at, so your AI editor can make the
-              change. Mechanical ones come with a ready patch for your framework.
+              Findings reach Claude Code, Cursor, VS Code or Windsurf over MCP, with the URLs, the evidence and the file
+              to change. Mechanical fixes come as a ready patch for your framework.
             </p>
-            <pre data-reveal className="ui-card diff mt-7 overflow-x-auto px-5 py-4 font-mono text-[13px] leading-relaxed [--d:260]">
-              <span className="text-fg-subtle">app/pricing/page.tsx</span>
-              {"\n"}
-              <span className="text-fg">{"  export const metadata = {\n    title: \"Pricing\",\n"}</span>
-              <span className="diff-del">{"-   robots: { index: false },\n"}</span>
-              <span className="text-fg">{"  };"}</span>
-            </pre>
-            <p data-reveal className="mt-2 font-mono text-[12px] text-fg-subtle [--d:300]">
-              the change your editor makes from the finding
-            </p>
-            <ul data-reveal className="mt-6 flex flex-wrap gap-x-5 gap-y-2 [--d:340]" aria-label="Framework guides">
+            <ul data-reveal className="mt-7 flex flex-wrap gap-x-5 gap-y-2 [--d:260]" aria-label="Framework guides">
               {FRAMEWORK_PAGES.map((fw) => (
                 <li key={fw.slug}>
                   <Link href={`/frameworks/${fw.slug}`} className={TEXT_LINK}>
@@ -265,19 +214,19 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <p id="security" data-reveal className="mt-5 text-sm leading-relaxed text-fg-muted [--d:380]">
-              In Claude Code, Cursor, VS Code or Windsurf, over MCP:{" "}
+            <p id="security" data-reveal className="mt-6 text-sm leading-relaxed text-fg-muted [--d:340]">
+              Septune reads your pages like any crawler. It never writes to your repository and never sees your source
+              code or secrets.{" "}
               <Link href="/docs/agent" className={TEXT_LINK}>
                 connect your editor
               </Link>
-              . Septune reads your rendered pages like any crawler; it never writes to your repository and never reads
-              your source code or secrets.
             </p>
           </StepBlock>
 
-          <StepBlock copy={STEPS.watch}>
+          <StepBlock copy={STEPS.monitor}>
             <p data-reveal className="step-body [--d:160]">
-              No credit card. Plans add sites and check them every day.
+              Septune re-reads production on a schedule and tells you the day something breaks, by email, Slack,
+              Discord or webhook. One site is free, no card.
             </p>
             <ul className="mt-7 space-y-2.5">
               {PRICING_TIERS.map((tier, i) => (
@@ -307,6 +256,18 @@ export default function LandingPage() {
               {BILLING_NOTE}
             </p>
           </StepBlock>
+
+          <StepBlock copy={STEPS.ai}>
+            <p data-reveal className="step-body [--d:160]">
+              Most AI crawlers don&apos;t run JavaScript. Septune checks which of 21 crawlers your robots.txt lets in,
+              from Googlebot to OAI-SearchBot, and how much of each page they can actually read.
+            </p>
+            <p data-reveal className="mt-6 [--d:260]">
+              <Link href="/ai-crawlers" className={TEXT_LINK}>
+                the crawlers behind AI answers
+              </Link>
+            </p>
+          </StepBlock>
         </div>
       </section>
 
@@ -323,9 +284,7 @@ export default function LandingPage() {
               </h2>
             </div>
             <p data-reveal className="step-body lg:pb-2 [--d:140]">
-              On 2 November 2026 it read septune.dev, 94 pages in 9 seconds. The day before, it scored 99 and raised
-              four things to fix; we fixed them and ran it again. Here is that run, nothing removed: one note, on
-              purpose, since /login, /signup and /preorder stay out of search.
+              94 pages in 9 seconds, on 2 November 2026. The run is shown as it came out, including its one note.
             </p>
           </div>
           <div data-reveal className="mt-12 [--d:220]">
@@ -372,7 +331,7 @@ export default function LandingPage() {
         <div aria-hidden className="sky-field sky-field--dawn" />
         <div className="container-rf relative grid gap-8 py-20 md:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-end lg:gap-16">
           <h2 id="cta-title" className="cta-title">
-            See what Septune finds <em>on your site.</em>
+            Know what Google sees <em>before your next deploy.</em>
           </h2>
           <form action="/audit" method="get">
             <label htmlFor="cta-url" className="sr-only">
@@ -394,7 +353,7 @@ export default function LandingPage() {
                 Audit free
               </button>
             </div>
-            <p className="mt-4 font-mono text-[13px] text-on-blue-muted">no signup · 3 pages free · {CHECKS} checks</p>
+            <p className="mt-4 font-mono text-[13px] text-on-blue-muted">no signup · 3 pages free</p>
           </form>
         </div>
       </section>
