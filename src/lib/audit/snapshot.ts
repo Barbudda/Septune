@@ -29,6 +29,8 @@ export interface PageState {
   noindexMeta: boolean;
   /** noindex from the X-Robots-Tag header (often an environment setting). */
   noindexHeader: boolean;
+  /** `noai` / `noimageai` in the X-Robots-Tag header: opts out of AI use of the page. */
+  noaiHeader?: boolean;
   h1: string | null;
   /** Path the request landed on when it redirected. */
   redirectedTo?: string;
@@ -54,7 +56,14 @@ export interface SiteSnapshot {
   geoScore: number | null;
   issues: SnapshotIssue[];
   pages: Record<string, PageState>;
-  robots: { status: number | null; hash: string | null; googlebotAllowed: boolean; aiSearchBlocked: string[] };
+  robots: {
+    status: number | null;
+    hash: string | null;
+    googlebotAllowed: boolean;
+    aiSearchBlocked: string[];
+    /** Every AI crawler of `AI_BOTS` that robots.txt blocks, training bots included. Absent on older snapshots. */
+    aiBlocked?: string[];
+  };
   sitemap: { present: boolean; urls: number };
   tls: { validTo: string; daysLeft: number; trusted: boolean } | null;
   /** Core Web Vitals p75 (CrUX), when fetched. */
@@ -119,6 +128,7 @@ export function buildSnapshot(input: {
       noindexHeader: headerDirectives(p.xRobotsTag).some((d) => d === "noindex" || d === "none"),
       h1: p.h1s[0]?.slice(0, 200) ?? null,
     };
+    if (headerDirectives(p.xRobotsTag).some((d) => d === "noai" || d === "noimageai")) state.noaiHeader = true;
     if (p.requestedUrl) state.redirectedTo = pathKey(p.url, url);
     pageStates[key] = state;
   }
@@ -146,6 +156,7 @@ export function buildSnapshot(input: {
       hash: robotsTxt ? fnv1a(robotsTxt) : null,
       googlebotAllowed: botAllowed(robotsTxt, "Googlebot", "/"),
       aiSearchBlocked: AI_BOTS.filter((b) => b.purpose !== "training" && b.bot !== "Googlebot" && !botAllowed(robotsTxt, b.bot, "/")).map((b) => b.bot),
+      aiBlocked: AI_BOTS.filter((b) => !botAllowed(robotsTxt, b.bot, "/")).map((b) => b.bot),
     },
     sitemap: { present: Boolean(siteFiles?.hasSitemap), urls: siteFiles?.sitemapUrls?.length ?? 0 },
     tls: siteFiles?.tls
@@ -282,7 +293,10 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
       add({ kind: "noindex-removed", level: "info", path, title: `${path} is indexable again` });
     }
     if (crossOrigin && !a.noindexHeader && b.noindexHeader) {
-      environment.push(`${path} sends an X-Robots-Tag noindex header (normal on preview deployments)`);
+      environment.push(`${path} sends an X-Robots-Tag noindex header (normal on preview deployments)${path === "/" ? ": search and answer engines would drop the home page if it shipped" : ""}`);
+    }
+    if (crossOrigin && path === "/" && !a.noaiHeader && b.noaiHeader) {
+      add({ kind: "ai-header-added", level: "info", path, title: "The home page sends an X-Robots-Tag noai header that production does not (AI crawlers are asked not to use it)" });
     }
     const ca = crossOrigin ? canonicalPath(a.canonical) : a.canonical;
     const cb = crossOrigin ? canonicalPath(b.canonical) : b.canonical;
@@ -356,6 +370,29 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
           level: next.tls.daysLeft <= 3 ? "critical" : "warning",
           title: `The HTTPS certificate expires in ${next.tls.daysLeft} day${next.tls.daysLeft === 1 ? "" : "s"}`,
         });
+      }
+    }
+  }
+
+  // ── AI crawler access, preview vs production ──
+  // Same-host diffs already report new robots.txt blocks above. Across hosts
+  // the question is different: what does production let in that this build
+  // would shut out? A blanket block on every crawler, Googlebot included, is
+  // how staging hosts are set up, so it is an environment note.
+  if (crossOrigin) {
+    const prevBlocked = new Set(prev.robots.aiBlocked ?? prev.robots.aiSearchBlocked);
+    const lost = (next.robots.aiBlocked ?? next.robots.aiSearchBlocked).filter((b) => !prevBlocked.has(b) && b !== "Googlebot");
+    const meta = (bot: string) => AI_BOTS.find((x) => x.bot === bot);
+    const search = lost.filter((b) => meta(b)?.purpose !== "training");
+    const training = lost.filter((b) => meta(b)?.purpose === "training");
+    if (prev.robots.googlebotAllowed && !next.robots.googlebotAllowed) {
+      if (lost.length) environment.push(`robots.txt on ${next.origin} blocks every crawler, ${lost.length} AI crawler${lost.length > 1 ? "s" : ""} included (normal on a staging host)`);
+    } else {
+      if (search.length) {
+        add({ kind: "ai-search-blocked", level: "critical", path: "/robots.txt", title: `${next.origin} robots.txt blocks ${search.join(", ")} (AI search) while production allows ${search.length > 1 ? "them" : "it"}` });
+      }
+      if (training.length) {
+        add({ kind: "ai-training-blocked", level: "info", path: "/robots.txt", title: `${next.origin} robots.txt blocks ${training.join(", ")} (AI training) while production allows ${training.length > 1 ? "them" : "it"}` });
       }
     }
   }
