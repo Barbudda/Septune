@@ -1396,3 +1396,56 @@ html:has(.forge-ui) {
     }
   }
 }
+
+/* ── The impact zone under the hero: one outcome per row, its how beneath,
+   where it runs in mono. A ruled list, so it reads as a statement. */
+@layer components {
+  .impact-list {
+    border-top: 1px solid var(--color-border);
+  }
+  .impact-list > li {
+    display: grid;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-block: 1.75rem;
+  }
+  @media (min-width: 768px) {
+    .impact-list > li {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+      grid-template-rows: auto 1fr;
+      column-gap: 2.5rem;
+      row-gap: 0.75rem;
+    }
+    .impact-where {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .impact-outcome {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .impact-how {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      align-self: end;
+    }
+  }
+  .impact-where {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--color-ultramarine);
+  }
+  .impact-outcome {
+    font-family: var(--font-display);
+    font-size: clamp(1.625rem, 2.4vw, 2.125rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--color-fg);
+  }
+  .impact-how {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-fg-muted);
+  }
+}

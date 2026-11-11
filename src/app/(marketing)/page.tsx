@@ -50,6 +50,48 @@ const HERO = [{ text: "Ship fast." }, { text: "Stay indexed.", em: true, br: tru
 const TEXT_LINK =
   "font-mono text-[13px] text-fg underline decoration-ultramarine/40 underline-offset-[6px] transition-colors duration-200 hover:text-ultramarine hover:decoration-ultramarine";
 
+/*
+ * The impact zone (Hugo, 2026-11-11: visitors did not get what Septune does
+ * for their project). Each row is an outcome a founder wants, then how the
+ * product gets it. Strong, but true: nothing here promises rankings.
+ */
+const IMPACT_TITLE = [{ text: "Every deploy can cost you traffic." }, { text: "Septune catches it first.", em: true }];
+
+const IMPACTS = [
+  {
+    outcome: "Your pages stay in Google.",
+    how: "Noindex tags, wrong canonicals, robots.txt blocks, broken redirects, pages missing from the sitemap: 69 checks on every page, each finding with its evidence.",
+    where: "every audit",
+  },
+  {
+    outcome: "No release ships an SEO regression.",
+    how: "The GitHub Action compares the preview with production, page by page, and fails the pull request that would take pages out of search.",
+    where: "GitHub Action",
+  },
+  {
+    outcome: "Fixes take minutes, not an afternoon.",
+    how: "Each finding names the URL, the proof and the file to change. Claude Code, Cursor, VS Code or Windsurf read it over MCP and make the change.",
+    where: "CLI · MCP · Claude Code plugin",
+  },
+  {
+    outcome: "You hear about it before your users do.",
+    how: "Production is read again on a schedule. A page leaving the index or a score dropping reaches you by email, Slack, Discord or webhook.",
+    where: "monitoring",
+  },
+  {
+    outcome: "ChatGPT and Perplexity can read you.",
+    how: "Septune checks which of 21 AI and search crawlers your robots.txt lets in, and flags pages they see empty because the text only exists after JavaScript.",
+    where: "AI search",
+  },
+  {
+    outcome: "Your code stays yours.",
+    how: "It reads your public pages like any crawler, never writes to your repository and never sees your source or secrets. The engine is open source.",
+    where: "security",
+  },
+];
+
+const WORKS_WITH = ["Next.js", "Nuxt", "Astro", "SvelteKit", "Vite + React", "GitHub Actions", "Claude Code", "Cursor", "VS Code", "Windsurf", "Slack", "Discord"];
+
 type StepCopy = { view: View; n: string; title: { text: string; em?: boolean }[] };
 
 /**
@@ -150,6 +192,40 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── What it does for the project: outcomes first, the tool second ── */}
+      <section id="what-it-does" aria-labelledby="impact-title" className="relative z-10 py-24 md:py-32">
+        <div className="container-rf grid gap-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20">
+          <div className="lg:sticky lg:top-28 lg:self-start">
+            <p className="step-label" data-reveal>
+              What Septune does
+            </p>
+            <h2 id="impact-title" aria-label={plain(IMPACT_TITLE)} data-reveal className="step-title [--d:60]">
+              <Letters parts={IMPACT_TITLE} />
+            </h2>
+            <p data-reveal className="step-body [--d:140]">
+              One engine reads your site the way Google and AI assistants do, at the three moments SEO breaks: before
+              the push, in the pull request, and in production.
+            </p>
+            <ul data-reveal className="mt-7 flex flex-wrap gap-1.5 [--d:220]" aria-label="Where it runs">
+              {WORKS_WITH.map((t) => (
+                <li key={t} className="chip">
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <ol className="impact-list">
+            {IMPACTS.map((it, i) => (
+              <li key={it.outcome} data-reveal style={{ "--d": 80 + i * 60 } as React.CSSProperties}>
+                <span className="impact-where">{it.where}</span>
+                <h3 className="impact-outcome">{it.outcome}</h3>
+                <p className="impact-how">{it.how}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
