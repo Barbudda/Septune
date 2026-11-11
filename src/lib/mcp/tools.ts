@@ -8,6 +8,9 @@ import { searchCorpus } from "@/lib/support/corpus";
 import { runGeoAudit, buildLlmsTxt } from "@/lib/audit/geo";
 import { config } from "@/lib/config";
 import { buildSnapshot, diffSnapshots } from "@/lib/audit/snapshot";
+import { loadGscExport } from "@/lib/gsc/file";
+import { annotateDiff } from "@/lib/gsc/annotate";
+import { issueTraffic, type TrafficIndex } from "@/lib/gsc/export";
 import { computeOverallScore } from "@/lib/scoring";
 import { CATEGORY_WEIGHTS } from "@/lib/seo/constants";
 import type { CategoryScore, SeoCategory } from "@/types";
@@ -95,9 +98,25 @@ async function runEngine(url: string, framework: Framework, maxPages: number, ig
   return { engine: runDeterministicAudit(repo, pages, siteFiles, resources), pages, siteFiles };
 }
 
+/** `gscFile`: a Search Console export on this machine, so findings carry their clicks. Local server only: the hosted route never reads files. */
+function gscArg(v: unknown): TrafficIndex | null {
+  if (typeof v !== "string" || !v) return null;
+  if (process.env.RANKFORGE_ALLOW_LOCAL !== "1") throw new Error("gscFile only works with the local server (npx septune mcp).");
+  return loadGscExport(v);
+}
+
+const GSC_FILE_PROP = {
+  type: "string",
+  description:
+    "Path of a Search Console Performance export (Pages tab, CSV or the zip from Google) on this machine. Each finding then carries traffic.clicks, the clicks of its pages in the export, and findings are sorted by it. Local server only.",
+} as const;
+
 /** Compact issue view — bounded so responses stay editor-friendly. */
-function compactIssues(engine: ReturnType<typeof runDeterministicAudit>) {
-  return engine.issues.map((i) => ({
+function compactIssues(engine: ReturnType<typeof runDeterministicAudit>, gsc: TrafficIndex | null = null) {
+  const list = engine.issues.map((i) => ({ i, t: gsc ? issueTraffic(gsc, i.affectedUrls) : null }));
+  if (gsc) list.sort((a, b) => (b.t?.clicks ?? 0) - (a.t?.clicks ?? 0));
+  return list.map(({ i, t }) => ({
+    ...(t ? { traffic: { clicks: t.clicks, impressions: t.impressions, period: gsc!.period ?? "in the export", pages: t.pages.slice(0, 10) } } : {}),
     ruleId: i.ruleId,
     category: i.category,
     impact: i.impact,
@@ -123,18 +142,20 @@ export const MCP_TOOLS: McpTool[] = [
         framework: { type: "string", enum: FRAMEWORKS, description: "Site framework (improves file hints). Default nextjs." },
         maxPages: { type: "integer", minimum: 1, maximum: 200, description: "Pages to crawl (default 25; the hosted server caps at 24)." },
         ignoreRobots: { type: "boolean", description: "Crawl paths robots.txt disallows for SeptuneBot. Only for your own site." },
+        gscFile: GSC_FILE_PROP,
       },
     },
     async handler(args) {
       const url = asUrl(args.url);
       const framework = asFramework(args.framework);
       const maxPages = pagesArg(args.maxPages, 25);
+      const gsc = gscArg(args.gscFile);
       const { engine, pages } = await runEngine(url, framework, maxPages, args.ignoreRobots === true);
       return JSON.stringify(
         {
           pagesCrawled: pages.length,
           categoryScores: engine.categoryScores,
-          issues: compactIssues(engine),
+          issues: compactIssues(engine, gsc),
           siteSignals: {
             maxClickDepth: engine.siteSignals.maxDepth,
             orphanPages: engine.siteSignals.orphanPages,
@@ -162,12 +183,14 @@ export const MCP_TOOLS: McpTool[] = [
         baselineUrl: { type: "string", description: "The reference version, usually production, e.g. https://example.com/" },
         candidateUrl: { type: "string", description: "The version to check, e.g. http://localhost:3000/ or a preview URL" },
         maxPages: { type: "integer", minimum: 1, maximum: 200, description: "Pages to crawl on each side (default 25)." },
+        gscFile: GSC_FILE_PROP,
       },
     },
     async handler(args) {
       const baselineUrl = asUrl(args.baselineUrl);
       const candidateUrl = asUrl(args.candidateUrl);
       const maxPages = pagesArg(args.maxPages, 25);
+      const gsc = gscArg(args.gscFile);
       const snapshotOf = async (url: string) => {
         const { pages, siteFiles } = await scanSite(url, { maxPages, hardCap: pageCap(), deadlineMs: 50_000 });
         const engine = runDeterministicAudit(synthRepo(url, "nextjs"), pages, siteFiles);
@@ -179,7 +202,7 @@ export const MCP_TOOLS: McpTool[] = [
       };
       const before = await snapshotOf(baselineUrl);
       const after = await snapshotOf(candidateUrl);
-      const d = diffSnapshots(before, after);
+      const d = gsc ? annotateDiff(diffSnapshots(before, after), gsc) : diffSnapshots(before, after);
       const brief = (i: { ruleId: string; impact: string; title: string; paths: string[] }) => ({
         ruleId: i.ruleId,
         impact: i.impact,

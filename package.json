@@ -12,7 +12,7 @@
     "cli:build": "tsup --config cli/tsup.config.ts",
     "cli:test": "npm run cli:build && node --test cli/test/cli.test.mjs cli/test/v3.test.mjs",
     "test:monitor": "node --test tests/monitor.test.mjs",
-    "test": "npm run cli:test && npm run test:monitor && npm run test:billing && npm run test:tools && npm run test:preorder && npm run test:limits && npm run test:parity && npm run test:rule-docs && npm run test:ai-access && npm run test:render",
+    "test": "npm run cli:test && npm run test:monitor && npm run test:billing && npm run test:tools && npm run test:preorder && npm run test:limits && npm run test:parity && npm run test:rule-docs && npm run test:ai-access && npm run test:render && npm run test:gsc",
     "stripe:setup": "node --env-file-if-exists=.env.local scripts/stripe-setup.ts",
     "test:billing": "node --test tests/billing.test.mjs",
     "test:tools": "node --test tests/tools.test.mjs",
@@ -22,7 +22,8 @@
     "test:parity": "node --test tests/parity-checks.test.mjs",
     "test:rule-docs": "node --test tests/rule-docs.test.mjs",
     "test:ai-access": "node --test tests/ai-access-diff.test.mjs",
-    "test:render": "node --test tests/render-parity.test.mjs"
+    "test:render": "node --test tests/render-parity.test.mjs",
+    "test:gsc": "node --test tests/gsc.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

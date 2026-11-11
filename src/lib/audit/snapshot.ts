@@ -183,6 +183,11 @@ export interface SiteChange {
   /** One plain-English sentence. */
   title: string;
   path?: string;
+  /** Every page of an issue change (path is the first). */
+  paths?: string[];
+  /** Search Console clicks of the affected page(s), when an export was given (`annotateDiff`). */
+  clicks?: number;
+  impressions?: number;
   before?: string;
   after?: string;
 }
@@ -211,6 +216,8 @@ export interface SnapshotDiff {
   environment: string[];
   level: "none" | ChangeLevel;
   summary: string;
+  /** Set with a Search Console export: where the `clicks` on changes come from. */
+  traffic?: { period: string | null };
 }
 
 /**
@@ -440,7 +447,7 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
     }
   }
   for (const i of newIssues) {
-    add({ kind: "new-issue", level: IMPACT_LEVEL[i.impact], title: `New issue: ${i.title} (${i.paths.length})`, path: i.paths[0] });
+    add({ kind: "new-issue", level: IMPACT_LEVEL[i.impact], title: `New issue: ${i.title} (${i.paths.length})`, path: i.paths[0], paths: i.paths });
   }
   for (const i of worsenedIssues) {
     add({
@@ -448,6 +455,7 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
       level: i.impact === "critical" || i.impact === "high" ? "warning" : "info",
       title: `${i.title}: ${i.paths.length} more page${i.paths.length > 1 ? "s" : ""}`,
       path: i.paths[0],
+      paths: i.paths,
     });
   }
 
@@ -504,11 +512,16 @@ export function diffToMarkdown(d: SnapshotDiff): string {
   lines.push(`Compared **${d.to.url}** with **${d.from.url}**. Score ${d.from.overall} → ${d.to.overall}.`);
   if (d.changes.length) {
     lines.push("");
-    lines.push("| | Change |");
-    lines.push("|---|---|");
+    const traffic = d.traffic !== undefined && d.changes.some((c) => c.clicks !== undefined);
+    lines.push(traffic ? "| | Change | Clicks at stake |" : "| | Change |");
+    lines.push(traffic ? "|---|---|---|" : "|---|---|");
     for (const c of d.changes.slice(0, 40)) {
       const tag = c.level === "critical" ? "**critical**" : c.level;
-      lines.push(`| ${tag} | ${c.title.replace(/\|/g, "\\|")} |`);
+      const clicks = traffic ? ` ${c.clicks !== undefined ? c.clicks.toLocaleString("en-US") : ""} |` : "";
+      lines.push(`| ${tag} | ${c.title.replace(/\|/g, "\\|")} |${clicks}`);
+    }
+    if (d.traffic) {
+      lines.push("", `<sub>Clicks from your Search Console export${d.traffic.period ? ` (${d.traffic.period})` : ""}, for the pages it lists.</sub>`);
     }
   }
   if (d.resolvedIssues.length) {

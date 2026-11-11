@@ -12,6 +12,9 @@ import { RULE_CATALOG } from "@/lib/audit/catalog";
 import { runGeoAudit, buildLlmsTxt, type GeoReport } from "@/lib/audit/geo";
 import type { RenderOutcome } from "@/lib/audit/render-parity";
 import { renderPages } from "./render";
+import { loadGscExport } from "@/lib/gsc/file";
+import { annotateDiff } from "@/lib/gsc/annotate";
+import { issueTraffic, formatClicks, periodLabel, type IssueTraffic, type TrafficIndex } from "@/lib/gsc/export";
 import { computeOverallScore } from "@/lib/scoring";
 import { CATEGORY_WEIGHTS } from "@/lib/seo/constants";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -160,6 +163,18 @@ async function scanSite(url: string, args: Args, defaultPages: number): Promise<
   return { url, pages: res.pages, siteFiles: { ...siteFiles, crawlComplete: res.complete }, blockedByRobots: res.blockedByRobots, rendered };
 }
 
+/** --gsc <file>: a Search Console Performance export (Pages tab), read before the crawl so a bad file fails fast. */
+function loadGsc(args: Args): TrafficIndex | null {
+  const f = args.flags.gsc;
+  if (f === undefined) return null;
+  if (typeof f !== "string") return fail("--gsc needs the path of a Search Console export (CSV, or the zip from Export > Download).");
+  try {
+    return loadGscExport(f);
+  } catch (e) {
+    return fail(`--gsc: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 /** --vitals: CrUX field data (opt-in, needs CRUX_API_KEY or --crux-key). */
 async function maybeVitals(url: string, args: Args, quiet: boolean): Promise<VitalsReport | null> {
   if (args.flags.vitals !== true) return null;
@@ -187,6 +202,7 @@ async function cmdAudit(args: Args) {
   const probe = args.flags.probe !== false;
   const failUnder = args.flags["fail-under"] !== undefined ? Number(args.flags["fail-under"]) : null;
 
+  const gsc = loadGsc(args);
   const started = Date.now();
   if (!json) process.stderr.write(`${c.dim(`crawling ${url} (up to ${maxPages} pages)…`)}\n`);
 
@@ -200,8 +216,17 @@ async function cmdAudit(args: Args) {
   const scores = engine.categoryScores as Record<string, number>;
   const elapsed = ((Date.now() - started) / 1000).toFixed(1);
 
+  const traffic = new Map<EngineIssue, IssueTraffic>();
+  if (gsc) {
+    for (const i of engine.issues) {
+      const t = issueTraffic(gsc, i.affectedUrls);
+      if (t) traffic.set(i, t);
+    }
+  }
+  // With an export, the findings that put the most clicks at stake come first.
   const issues = [...engine.issues].sort(
     (a, b) =>
+      (traffic.get(b)?.clicks ?? 0) - (traffic.get(a)?.clicks ?? 0) ||
       IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact) ||
       b.affectedUrls.length - a.affectedUrls.length,
   );
@@ -215,7 +240,8 @@ async function cmdAudit(args: Args) {
           elapsedSeconds: Number(elapsed),
           overall,
           categoryScores: scores,
-          issues: issues.map(compactIssue),
+          searchConsole: gsc ? { period: gsc.period, pagesInExport: gsc.byPath.size } : undefined,
+          issues: issues.map((i) => compactIssue(i, traffic.get(i))),
           geo,
           vitals: siteFiles.vitals ?? null,
           crawl: {
@@ -230,7 +256,7 @@ async function cmdAudit(args: Args) {
       ) + "\n",
     );
   } else {
-    printReport({ url, pages: pages.length, elapsed, overall, scores, issues, engine, geo, scan });
+    printReport({ url, pages: pages.length, elapsed, overall, scores, issues, engine, geo, scan, gsc, traffic });
   }
 
   if (typeof args.flags.html === "string") {
@@ -249,7 +275,7 @@ async function cmdAudit(args: Args) {
 
   // --markdown appends, like diff: the GitHub Action collects both in one file.
   if (typeof args.flags.markdown === "string") {
-    appendFileSync(args.flags.markdown, auditToMarkdown({ url, pages: pages.length, overall, issues, geoScore: geo.score }));
+    appendFileSync(args.flags.markdown, auditToMarkdown({ url, pages: pages.length, overall, issues, geoScore: geo.score, gsc, traffic }));
   }
 
   if (typeof args.flags.save === "string") {
@@ -265,8 +291,9 @@ async function cmdAudit(args: Args) {
   }
 }
 
-function compactIssue(i: EngineIssue) {
+function compactIssue(i: EngineIssue, traffic?: IssueTraffic) {
   return {
+    ...(traffic ? { traffic: { clicks: traffic.clicks, impressions: traffic.impressions, pages: traffic.pages.slice(0, 10) } } : {}),
     ruleId: i.ruleId,
     category: i.category,
     impact: i.impact,
@@ -280,7 +307,15 @@ function compactIssue(i: EngineIssue) {
 }
 
 /** The audit as a short Markdown summary (job summary, pull-request comment). */
-function auditToMarkdown(r: { url: string; pages: number; overall: number; issues: EngineIssue[]; geoScore: number }): string {
+function auditToMarkdown(r: {
+  url: string;
+  pages: number;
+  overall: number;
+  issues: EngineIssue[];
+  geoScore: number;
+  gsc?: TrafficIndex | null;
+  traffic?: Map<EngineIssue, IssueTraffic>;
+}): string {
   const critical = r.issues.filter((i) => i.impact === "critical").length;
   const lines = [
     `### Septune · SEO audit: ${r.overall}/100${critical ? ` · ${critical} critical` : ""}`,
@@ -292,11 +327,14 @@ function auditToMarkdown(r: { url: string; pages: number; overall: number; issue
     lines.push("No issues detected.", "");
     return lines.join("\n");
   }
-  lines.push("| Impact | Issue | Pages |", "|---|---|---|");
+  const withClicks = Boolean(r.gsc && r.traffic?.size);
+  lines.push(withClicks ? "| Impact | Issue | Pages | Clicks at stake |" : "| Impact | Issue | Pages |", withClicks ? "|---|---|---|---|" : "|---|---|---|");
   for (const i of r.issues.slice(0, 12)) {
     const impact = i.impact === "critical" ? "**critical**" : i.impact;
-    lines.push(`| ${impact} | ${i.title.replace(/\|/g, "\\|")} | ${i.affectedUrls.length} |`);
+    const clicks = withClicks ? ` ${r.traffic!.get(i)?.clicks.toLocaleString("en-US") ?? ""} |` : "";
+    lines.push(`| ${impact} | ${i.title.replace(/\|/g, "\\|")} | ${i.affectedUrls.length} |${clicks}`);
   }
+  if (withClicks) lines.push("", `<sub>Clicks ${periodLabel(r.gsc!)}, for the pages it lists.</sub>`);
   if (r.issues.length > 12) lines.push(`| | ${r.issues.length - 12} more issues in the full report | |`);
   lines.push("");
   return lines.join("\n");
@@ -318,6 +356,8 @@ function printReport(r: {
   engine: ReturnType<typeof runDeterministicAudit>;
   geo: GeoReport;
   scan?: Scan;
+  gsc?: TrafficIndex | null;
+  traffic?: Map<EngineIssue, IssueTraffic>;
 }) {
   const out: string[] = [];
   const w = (s = "") => out.push(s);
@@ -351,11 +391,16 @@ function printReport(r: {
   if (r.issues.length === 0) {
     w(`${c.green("✓")} No issues detected. Nice.`);
   } else {
-    w(`${c.bold("Issues")} ${c.dim(`(${r.issues.length})`)}`);
+    w(`${c.bold("Issues")} ${c.dim(`(${r.issues.length})`)}${r.gsc ? c.dim(`  sorted by clicks at stake, ${periodLabel(r.gsc)}`) : ""}`);
     for (const i of r.issues) {
       const tag = impactPaint[i.impact](i.impact.toUpperCase().padEnd(8));
       const fixable = i.ruleId && FIXABLE_RULE_IDS.includes(i.ruleId) ? c.green(" · fix template") : "";
       w(`  ${tag} ${c.bold(i.title)} ${c.dim(`(${i.affectedUrls.length})`)}${fixable}`);
+      const t = r.traffic?.get(i);
+      if (t) {
+        const top = t.pages.slice(0, 2).map((p) => `${p.url.replace(/^https?:\/\/[^/]+/, "") || "/"}: ${p.clicks.toLocaleString("en-US")}`);
+        w(`           ${c.yellow(`${formatClicks(t.clicks)} at stake`)} ${c.dim(`(${top.join(", ")}${t.pages.length > 2 ? ", …" : ""})`)}`);
+      }
       if (i.evidence) w(`           ${c.dim(i.evidence)}`);
       // One rule can list a page several times (a link suggestion per target).
       const unique = [...new Set(i.affectedUrls.map((u) => u.url))];
@@ -649,7 +694,11 @@ function printDiff(d: SnapshotDiff) {
   out.push(`${tone(c.bold(d.summary))}`);
   out.push("");
   const tag: Record<string, string> = { critical: c.red("CRITICAL"), warning: c.yellow("WARNING "), info: c.gray("info    ") };
-  for (const ch of d.changes) out.push(`  ${tag[ch.level]} ${ch.title}`);
+  for (const ch of d.changes) {
+    const clicks = ch.clicks !== undefined ? c.yellow(`  ${formatClicks(ch.clicks)} at stake`) : "";
+    out.push(`  ${tag[ch.level]} ${ch.title}${clicks}`);
+  }
+  if (d.traffic) out.push(c.dim(`  Clicks from your Search Console export${d.traffic.period ? ` (${d.traffic.period})` : ""}, for the pages it lists.`));
   if (!d.changes.length) out.push(`  ${c.green("✓")} nothing changed that matters for search`);
   if (d.resolvedIssues.length) {
     out.push("");
@@ -664,7 +713,8 @@ function printDiff(d: SnapshotDiff) {
   process.stdout.write(out.join("\n"));
 }
 
-function emitDiff(d: SnapshotDiff, args: Args, gate: Gate) {
+function emitDiff(raw: SnapshotDiff, args: Args, gate: Gate, gsc: TrafficIndex | null = null) {
+  const d = gsc ? annotateDiff(raw, gsc) : raw;
   if (args.flags.json === true) process.stdout.write(JSON.stringify(d, null, 2) + "\n");
   else printDiff(d);
   // --markdown appends (GitHub's $GITHUB_STEP_SUMMARY is an append-only file).
@@ -679,15 +729,17 @@ function emitDiff(d: SnapshotDiff, args: Args, gate: Gate) {
 
 async function cmdDiff(args: Args) {
   const gate = asGate(args.flags["fail-on"], "critical");
+  const gsc = loadGsc(args);
   const before = await resolveSide(args._[1], args, "before");
   const after = await resolveSide(args._[2], args, "after");
-  emitDiff(diffSnapshots(before, after), args, gate);
+  emitDiff(diffSnapshots(before, after), args, gate, gsc);
 }
 
 async function cmdWatch(args: Args) {
   const url = asUrl(args._[1]);
   const baseline = typeof args.flags.baseline === "string" ? args.flags.baseline : ".septune/baseline.json";
   const gate = asGate(args.flags["fail-on"], "critical");
+  const gsc = loadGsc(args);
   const json = args.flags.json === true;
   if (!json) process.stderr.write(`${c.dim(`auditing ${url}…`)}\n`);
   const scan = await scanSite(url, args, DEFAULT_PAGES);
@@ -704,7 +756,7 @@ async function cmdWatch(args: Args) {
     else process.stdout.write(JSON.stringify({ baselineCreated: baseline, overall: snapshot.overall }, null, 2) + "\n");
     return;
   }
-  emitDiff(diffSnapshots(readSnapshot(baseline), snapshot), args, gate);
+  emitDiff(diffSnapshots(readSnapshot(baseline), snapshot), args, gate, gsc);
   if (args.flags.update === true) {
     save();
     if (!json) process.stderr.write(`${c.green("✓")} baseline updated\n`);
@@ -781,6 +833,7 @@ ${c.bold("Flags")}
   --fail-on gate   diff & watch: critical (default) | new (any new issue) | none
   --markdown file  audit, diff & watch: append a Markdown summary (e.g. $GITHUB_STEP_SUMMARY)
   --render         audit & geo: also render up to 25 pages in the Chrome or Edge on this machine and compare with the raw HTML (needs playwright-core)
+  --gsc file       audit, diff & watch: a Search Console Performance export (Pages tab, CSV or zip); each finding shows the clicks it puts at stake
   --vitals         add Core Web Vitals from Google CrUX (sends the URL to Google)
   --crux-key key   CrUX API key for --vitals / vitals (default: CRUX_API_KEY)
   --update         watch: replace the baseline with this run once it's compared
