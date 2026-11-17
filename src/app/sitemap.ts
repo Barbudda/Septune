@@ -4,6 +4,7 @@ import { config } from "@/lib/config";
 import { CHANGELOG, FRAMEWORK_PAGES } from "@/lib/seo/content";
 import { RULE_PAGES } from "@/lib/audit/rule-docs";
 import { GUIDES } from "@/lib/seo/guides";
+import { VS_PAGES, vsPath } from "@/lib/seo/vs";
 import { HUBS, TOPICS, topicPath, topicsIn, type TopicHub } from "@/lib/seo/topics";
 
 /**
@@ -54,6 +55,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...TOPICS.map((t) => ({
       ...entry(topicPath(t), 0.6, "monthly"),
       lastModified: new Date(t.updated),
+    })),
+    entry("/vs", 0.6, "monthly"),
+    ...VS_PAGES.map((v) => ({
+      ...entry(vsPath(v), 0.7, "monthly"),
+      lastModified: new Date(v.updated),
     })),
     entry("/changelog", 0.5, "weekly"),
     entry("/privacy", 0.3, "yearly"),
