@@ -64,9 +64,33 @@ export default function PrivacyPage() {
             HTML and your repository structure; it never reads your environment
             secrets.
           </p>
+        </ProseBlock>
+        <ProseBlock heading="Local audits, hosted audits and AI explanations">
+          {/* TODO(Hugo): confirmer la durée de conservation des audits publics (3 pages) : le code ne dit pas s'ils sont stockés. */}
+          <p>
+            <strong>CLI, local MCP server and GitHub Action.</strong> These run
+            on your machine or in your CI. The pages they read go from your site
+            to your machine; nothing is sent to Septune.
+          </p>
           <p className="mt-3">
-            The open-source CLI and the editor agent (MCP) run on your machine.
-            They send nothing to Septune.
+            <strong>Hosted audits on septune.dev.</strong> The free public audit,
+            the audits in the app and the hosted MCP server fetch the pages you
+            point them at from our servers, on Vercel. Audits run in the app
+            are stored in Supabase with your account (the audit, its issues and
+            what the audit measured and the issues found); monitoring
+            checks are stored as described above.
+          </p>
+          <p className="mt-3">
+            <strong>Optional AI explanations.</strong> Some features can call
+            Anthropic&apos;s API to explain findings or answer support
+            questions, but only on a deployment where an Anthropic API key is
+            set. Septune&apos;s production runs without one, so today nothing
+            from your pages or findings is sent to Anthropic by septune.dev. If
+            that changes, this page will say so before it happens, and what
+            would be sent is the crawled page content and the detected issues,
+            never your credentials. If you use Septune through an AI assistant
+            such as Claude Code or Cursor, that assistant has its own policy for
+            what it sends to its provider.
           </p>
         </ProseBlock>
         <ProseBlock heading="Who processes it">
@@ -89,11 +113,6 @@ export default function PrivacyPage() {
               holds your card and billing details; Septune only keeps your
               Stripe customer id, the subscription&apos;s status and its renewal
               date, and never sees your card.
-            </li>
-            <li>
-              <strong>Anthropic</strong>: audit runs may call its API to analyze
-              crawled pages. Only the crawled page content and detected issues
-              are sent, never your credentials.
             </li>
             <li>
               <strong>Google</strong>: when Core Web Vitals are turned on, the
