@@ -117,20 +117,20 @@ test("les erreurs donnent la ligne et la clé", () => {
   assert.deepEqual([e1[0].line, e1[0].key], [3, "contracts[0].min_words"]);
   const e2 = errorsOf("contracts:\n  - match: /a\n    statuss: 200\n    status: 200\n");
   assert.equal(e2[0].line, 3);
-  assert.match(e2[0].message, /clé inconnue/);
+  assert.match(e2[0].message, /unknown key/);
   const e3 = errorsOf("fail_on: sometimes\n");
   assert.deepEqual([e3[0].line, e3[0].key], [1, "fail_on"]);
   const e4 = errorsOf("ignore:\n  - match: /a/*\n    rules: [meta-title-missing]\n");
   assert.equal(e4[0].key, "ignore[0].reason");
   const e5 = errorsOf("ignore:\n  - match: /a/*\n    rules: [pas-une-regle]\n    reason: x\n");
-  assert.match(e5[0].message, /règle inconnue/);
+  assert.match(e5[0].message, /unknown rule/);
   assert.equal(e5[0].line, 3);
   const e6 = errorsOf("contracts:\n  - match: products\n    status: 200\n");
   assert.equal(e6[0].key, "contracts[0].match");
   const e7 = errorsOf("contracts:\n\t- match: /a\n");
-  assert.match(e7[0].message, /tabulation/);
+  assert.match(e7[0].message, /tab at the start/);
   const e8 = errorsOf("contracts:\n  - match: /a\n");
-  assert.match(e8[0].message, /aucune assertion/);
+  assert.match(e8[0].message, /no assertion/);
 });
 
 test("les motifs : * = un segment, ** = plusieurs, slash final toléré", () => {

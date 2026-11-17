@@ -92,7 +92,7 @@ function scalar(raw: string, line: number): Scalar {
   const s = raw.trim();
   if (s.startsWith('"') || s.startsWith("'")) {
     const q = s[0]!;
-    if (s.length < 2 || s[s.length - 1] !== q) throw { line, key: "", message: `guillemet ${q} non fermé` } satisfies ConfigError;
+    if (s.length < 2 || s[s.length - 1] !== q) throw { line, key: "", message: `unclosed ${q} quote` } satisfies ConfigError;
     const inner = s.slice(1, -1);
     return q === '"' ? inner.replace(/\\(["\\nt])/g, (_, c: string) => (c === "n" ? "\n" : c === "t" ? "\t" : c)) : inner.replace(/''/g, "'");
   }
@@ -126,11 +126,11 @@ function splitFlow(inner: string, line: number): YNode[] {
 function value(raw: string, line: number): YNode {
   const s = raw.trim();
   if (s.startsWith("[")) {
-    if (!s.endsWith("]")) throw { line, key: "", message: "liste inline non fermée (il manque « ] »)" } satisfies ConfigError;
+    if (!s.endsWith("]")) throw { line, key: "", message: "inline list is not closed (missing ']')" } satisfies ConfigError;
     const inner = s.slice(1, -1);
     return { t: "l", l: inner.trim() ? splitFlow(inner, line) : [], line };
   }
-  if (s.startsWith("{")) throw { line, key: "", message: "les mappings inline { } ne sont pas pris en charge, utilise des lignes « clé: valeur »" } satisfies ConfigError;
+  if (s.startsWith("{")) throw { line, key: "", message: "inline { } maps are not supported, use 'key: value' lines" } satisfies ConfigError;
   return { t: "s", v: scalar(s, line), line };
 }
 
@@ -140,7 +140,7 @@ function parseYaml(src: string): YNode {
   const lines: YLine[] = [];
   src.split(/\r?\n/).forEach((raw, i) => {
     const n = i + 1;
-    if (/^\s*\t/.test(raw)) throw { line: n, key: "", message: "tabulation en début de ligne : YAML veut des espaces" } satisfies ConfigError;
+    if (/^\s*\t/.test(raw)) throw { line: n, key: "", message: "tab at the start of a line: YAML needs spaces" } satisfies ConfigError;
     const text = stripComment(raw).replace(/\s+$/, "");
     if (!text.trim()) return;
     lines.push({ n, indent: text.length - text.trimStart().length, text: text.trim() });
@@ -160,9 +160,9 @@ function parseYaml(src: string): YNode {
     while (pos < lines.length && lines[pos]!.indent === indent && !isItem(lines[pos]!)) {
       const l = lines[pos]!;
       const k = KEY_RE.exec(l.text);
-      if (!k) throw { line: l.n, key: "", message: `je attends « clé: valeur », j'ai lu « ${l.text} »` } satisfies ConfigError;
+      if (!k) throw { line: l.n, key: "", message: `expected 'key: value', read '${l.text}'` } satisfies ConfigError;
       const key = k[1]!.replace(/^["']|["']$/g, "");
-      if (m.has(key)) throw { line: l.n, key, message: `clé « ${key} » en double` } satisfies ConfigError;
+      if (m.has(key)) throw { line: l.n, key, message: `duplicate key '${key}'` } satisfies ConfigError;
       pos++;
       const rest = k[2]?.trim();
       if (rest) m.set(key, value(rest, l.n));
@@ -173,7 +173,7 @@ function parseYaml(src: string): YNode {
       }
     }
     const stray = lines[pos];
-    if (stray && stray.indent > indent) throw { line: stray.n, key: "", message: "indentation inattendue" } satisfies ConfigError;
+    if (stray && stray.indent > indent) throw { line: stray.n, key: "", message: "unexpected indentation" } satisfies ConfigError;
     return { t: "m", m, line: first.n };
   }
 
@@ -200,13 +200,13 @@ function parseYaml(src: string): YNode {
       }
     }
     const stray = lines[pos];
-    if (stray && stray.indent > indent) throw { line: stray.n, key: "", message: "indentation inattendue" } satisfies ConfigError;
+    if (stray && stray.indent > indent) throw { line: stray.n, key: "", message: "unexpected indentation" } satisfies ConfigError;
     return { t: "l", l: items, line: first.n };
   }
 
   if (!lines.length) return { t: "m", m: new Map(), line: 1 };
   const root = block(lines[0]!.indent);
-  if (pos < lines.length) throw { line: lines[pos]!.n, key: "", message: "indentation inattendue" } satisfies ConfigError;
+  if (pos < lines.length) throw { line: lines[pos]!.n, key: "", message: "unexpected indentation" } satisfies ConfigError;
   return root;
 }
 
@@ -242,28 +242,28 @@ export function parseConfig(src: string, file = "septune.yml"): SeptuneConfig {
   const cfg: SeptuneConfig = { failOn: "high", contracts: [], ignore: [] };
 
   if (root.t !== "m") {
-    err(root.line, "", "le fichier doit être un mapping (fail_on, contracts, ignore)");
+    err(root.line, "", "the file must be a mapping (fail_on, contracts, ignore)");
     throw new ConfigParseError(file, errors);
   }
   const unknown = (m: Map<string, YNode>, allowed: string[], path: string) => {
-    for (const [k, n] of m) if (!allowed.includes(k)) err(n.line, path ? `${path}.${k}` : k, `clé inconnue. Clés admises : ${allowed.join(", ")}`);
+    for (const [k, n] of m) if (!allowed.includes(k)) err(n.line, path ? `${path}.${k}` : k, `unknown key. Allowed keys: ${allowed.join(', ')}`);
   };
   unknown(root.m, TOP_KEYS, "");
 
   const fo = root.m.get("fail_on");
   if (fo) {
     if (fo.t === "s" && typeof fo.v === "string" && FAIL_ON.includes(fo.v as FailOn)) cfg.failOn = fo.v as FailOn;
-    else err(fo.line, "fail_on", `doit valoir ${FAIL_ON.join(", ")}`);
+    else err(fo.line, "fail_on", `must be one of ${FAIL_ON.join(', ')}`);
   }
 
   const isEmpty = (n: YNode | undefined) => n === undefined || (n.t === "s" && n.v === null);
   const cs = root.m.get("contracts");
   if (cs && !isEmpty(cs)) {
-    if (cs.t !== "l") err(cs.line, "contracts", "doit être une liste de contrats (« - match: /products/* »)");
+    if (cs.t !== "l") err(cs.line, "contracts", "must be a list of contracts ('- match: /products/*')");
     else
       cs.l.forEach((item, i) => {
         const p = `contracts[${i}]`;
-        if (item.t !== "m") return err(item.line, p, "un contrat est un mapping avec au moins « match »");
+        if (item.t !== "m") return err(item.line, p, "a contract is a mapping with at least 'match'");
         unknown(item.m, CONTRACT_KEYS, p);
         const c: Contract = { match: "", line: item.line, severity: "high" };
         const get = (k: string) => item.m.get(k);
@@ -271,84 +271,84 @@ export function parseConfig(src: string, file = "septune.yml"): SeptuneConfig {
           const n = get(k);
           if (!n) return undefined;
           if (n.t === "s" && typeof n.v === "string" && n.v.trim()) return n.v;
-          err(n.line, `${p}.${k}`, "doit être un texte non vide");
+          err(n.line, `${p}.${k}`, "must be non-empty text");
           return undefined;
         };
         const m = get("match");
         const ms = str("match");
-        if (!m) err(item.line, `${p}.match`, "« match » est obligatoire (un motif de chemin comme /products/*)");
+        if (!m) err(item.line, `${p}.match`, "'match' is required (a path pattern such as /products/*)");
         else if (ms !== undefined) {
-          if (!ms.startsWith("/")) err(m.line, `${p}.match`, `le motif doit commencer par « / » (reçu « ${ms} »)`);
+          if (!ms.startsWith("/")) err(m.line, `${p}.match`, `the pattern must start with '/' (got '${ms}')`);
           else c.match = ms;
         }
         const sev = get("severity");
         if (sev) {
           if (sev.t === "s" && typeof sev.v === "string" && SEVERITIES.includes(sev.v as Severity)) c.severity = sev.v as Severity;
-          else err(sev.line, `${p}.severity`, `doit valoir ${SEVERITIES.join(", ")}`);
+          else err(sev.line, `${p}.severity`, `must be one of ${SEVERITIES.join(', ')}`);
         }
         const st = get("status");
         if (st) {
           if (st.t === "s" && typeof st.v === "number" && Number.isInteger(st.v) && st.v >= 100 && st.v < 600) c.status = st.v;
-          else err(st.line, `${p}.status`, "doit être un code HTTP (200, 301…)");
+          else err(st.line, `${p}.status`, "must be an HTTP status code (200, 301…)");
         }
         const ix = get("indexable");
         if (ix) {
           if (ix.t === "s" && typeof ix.v === "boolean") c.indexable = ix.v;
-          else err(ix.line, `${p}.indexable`, "doit valoir true ou false");
+          else err(ix.line, `${p}.indexable`, "must be true or false");
         }
         const ca = str("canonical");
         if (ca !== undefined) c.canonical = ca;
         const h1 = get("h1");
         if (h1) {
           if (h1.t === "s" && typeof h1.v === "string" && h1.v.trim()) c.h1 = h1.v;
-          else err(h1.line, `${p}.h1`, "doit valoir « present » ou le texte exact attendu");
+          else err(h1.line, `${p}.h1`, "must be 'present' or the exact text expected");
         }
         const ti = get("title");
         if (ti) {
           if (ti.t === "s" && ti.v === "present") c.title = "present";
-          else err(ti.line, `${p}.title`, "seule la valeur « present » existe");
+          else err(ti.line, `${p}.title`, "the only value is 'present'");
         }
         const sc = get("schema");
         if (sc) {
           const names = sc.t === "l" ? sc.l : sc.t === "s" && typeof sc.v === "string" ? [sc] : null;
           if (!names || !names.length || names.some((n) => n.t !== "s" || typeof n.v !== "string" || !n.v)) {
-            err(sc.line, `${p}.schema`, "doit être une liste de types JSON-LD, par exemple [Product, Offer]");
+            err(sc.line, `${p}.schema`, "must be a list of JSON-LD types, for example [Product, Offer]");
           } else c.schema = names.map((n) => (n as { v: string }).v);
         }
         for (const [k, field] of [["min_words", "minWords"], ["links_in_min", "linksInMin"]] as const) {
           const n = get(k);
           if (!n) continue;
           if (n.t === "s" && typeof n.v === "number" && Number.isInteger(n.v) && n.v >= 0) c[field] = n.v;
-          else err(n.line, `${p}.${k}`, "doit être un entier positif");
+          else err(n.line, `${p}.${k}`, "must be a non-negative integer");
         }
-        if (!CONTRACT_KEYS.slice(2).some((k) => get(k))) err(item.line, p, "aucune assertion : ajoute status, indexable, canonical, h1, title, schema, min_words ou links_in_min");
+        if (!CONTRACT_KEYS.slice(2).some((k) => get(k))) err(item.line, p, "no assertion: add status, indexable, canonical, h1, title, schema, min_words or links_in_min");
         if (c.match) cfg.contracts.push(c);
       });
   }
 
   const ig = root.m.get("ignore");
   if (ig && !isEmpty(ig)) {
-    if (ig.t !== "l") err(ig.line, "ignore", "doit être une liste (« - match: … / rules: [...] / reason: … »)");
+    if (ig.t !== "l") err(ig.line, "ignore", "must be a list of entries with match, rules and reason");
     else
       ig.l.forEach((item, i) => {
         const p = `ignore[${i}]`;
-        if (item.t !== "m") return err(item.line, p, "une exception est un mapping avec match, rules et reason");
+        if (item.t !== "m") return err(item.line, p, "an exception is a mapping with match, rules and reason");
         unknown(item.m, IGNORE_KEYS, p);
         const r: IgnoreRule = { match: "", rules: [], reason: "", line: item.line };
         const m = item.m.get("match");
-        if (!m || m.t !== "s" || typeof m.v !== "string" || !m.v.startsWith("/")) err(m?.line ?? item.line, `${p}.match`, "« match » est obligatoire et commence par « / »");
+        if (!m || m.t !== "s" || typeof m.v !== "string" || !m.v.startsWith("/")) err(m?.line ?? item.line, `${p}.match`, "'match' is required and starts with '/'");
         else r.match = m.v;
         const rl = item.m.get("rules");
         const names = rl ? (rl.t === "l" ? rl.l : rl.t === "s" && typeof rl.v === "string" ? [rl] : null) : null;
-        if (!names || !names.length) err(rl?.line ?? item.line, `${p}.rules`, "« rules » est obligatoire : une liste d'identifiants de règle");
+        if (!names || !names.length) err(rl?.line ?? item.line, `${p}.rules`, "'rules' is required: a list of rule ids");
         else
           for (const n of names) {
-            if (n.t !== "s" || typeof n.v !== "string") err(n.line, `${p}.rules`, "un identifiant de règle est un texte");
-            else if (!KNOWN_RULES.has(n.v)) err(n.line, `${p}.rules`, `règle inconnue « ${n.v} » (voir septune rules)`);
+            if (n.t !== "s" || typeof n.v !== "string") err(n.line, `${p}.rules`, "a rule id is text");
+            else if (!KNOWN_RULES.has(n.v)) err(n.line, `${p}.rules`, `unknown rule '${n.v}' (see: septune rules)`);
             else r.rules.push(n.v);
           }
         const re = item.m.get("reason");
-        if (!re || re.t !== "s" || typeof re.v !== "string" || !re.v.trim()) err(re?.line ?? item.line, `${p}.reason`, "« reason » est obligatoire : une exception sans raison finit oubliée");
+        if (!re || re.t !== "s" || typeof re.v !== "string" || !re.v.trim()) err(re?.line ?? item.line, `${p}.reason`, "'reason' is required: an exception without a reason gets forgotten");
         else r.reason = re.v.trim();
         if (r.match && r.rules.length && r.reason) cfg.ignore.push(r);
       });
@@ -647,26 +647,26 @@ export function diffFailsOn(
   return [...d.newIssues, ...d.worsenedIssues].some((i) => atOrAbove(i.impact, failOn));
 }
 
-export const STARTER_CONFIG = `# septune.yml : contrats SEO testés à chaque déploiement.
-# Lancer : septune test <url>      (seulement les contrats, rapide, pour la CI)
-# Doc : https://www.septune.dev/docs/tests
+export const STARTER_CONFIG = `# septune.yml: SEO contracts, tested on every deploy.
+# Run:  septune test <url>     (runs only the contracts; fast, for CI)
+# Docs: https://www.septune.dev/docs/tests
 
-# Seuil qui fait échouer la CI (septune diff et septune test) :
-# critical, high ou medium. Défaut : high.
+# Findings at this level or above fail CI (septune test and septune diff):
+# critical, high or medium. Default: high.
 fail_on: high
 
 contracts:
-  # Chaque contrat vise un motif de chemin. * = un segment, ** = plusieurs.
+  # Each contract targets a path pattern. * = one segment, ** = any depth.
   - match: /products/*
-    severity: high            # critical | high | medium | low (défaut high)
+    severity: high            # critical | high | medium | low (default high)
     status: 200
     indexable: true
-    canonical: self           # ou une URL / un chemin
+    canonical: self           # or a URL / a path
     title: present
-    h1: present               # ou le texte exact attendu
-    schema: [Product, Offer]  # types JSON-LD présents
+    h1: present               # or the exact text expected
+    schema: [Product, Offer]  # JSON-LD types that must be present
     min_words: 150
-    links_in_min: 2           # liens internes entrants (pages crawlées)
+    links_in_min: 2           # inbound internal links (among crawled pages)
 
   # - match: /blog/*
   #   status: 200
@@ -674,15 +674,10 @@ contracts:
   #   schema: [Article]
   #   min_words: 400
 
-# Exceptions : une règle précise, sur un motif précis, avec une raison.
-# Elles sont affichées dans le rapport (« ignored by septune.yml »).
+# Exceptions: one rule, on one pattern, with a reason. They are listed in the
+# report as "ignored by septune.yml".
 ignore:
   # - match: /legal/*
   #   rules: [structure-thin-content]
-  #   reason: Les pages légales sont courtes par nature.
+  #   reason: Legal pages are short by design.
 `;
-
-/** Pour les tests et les messages : retrouve le fichier de config en remontant depuis un dossier. */
-export function configNames(): readonly string[] {
-  return CONFIG_FILES;
-}
