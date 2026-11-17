@@ -192,7 +192,7 @@ export function llmsTxtProblems(txt: string): string[] {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────
-function jsonLdTypes(page: CrawledPage): string[] {
+export function jsonLdTypes(page: CrawledPage): string[] {
   const out: string[] = [];
   const walk = (n: unknown) => {
     if (Array.isArray(n)) return n.forEach(walk);
@@ -220,7 +220,7 @@ function pathOf(url: string): string {
   }
 }
 
-const QUESTION_RE = /\?\s*$|^(how|what|why|when|where|which|who|can|does|is|are|should|do)\b/i;
+export const QUESTION_RE = /\?\s*$|^(how|what|why|when|where|which|who|can|does|is|are|should|do)\b/i;
 
 // ── the audit ────────────────────────────────────────────────────────
 export function runGeoAudit(

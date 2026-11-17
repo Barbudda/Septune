@@ -5,6 +5,7 @@ import type { GeoReport } from "./geo";
 import { AI_BOTS, botAllowed } from "./geo";
 import { headerDirectives } from "./robots-directives";
 import { normalizePath } from "./link-graph";
+import { contentChanges, contentSignals, type ContentSignals } from "./content-regressions";
 import type { VitalsRating, VitalsReport } from "./vitals";
 
 /**
@@ -32,6 +33,8 @@ export interface PageState {
   /** `noai` / `noimageai` in the X-Robots-Tag header: opts out of AI use of the page. */
   noaiHeader?: boolean;
   h1: string | null;
+  /** What the page says, in a few numbers (see content-regressions.ts). Absent on older snapshots. */
+  content?: ContentSignals;
   /** Path the request landed on when it redirected. */
   redirectedTo?: string;
 }
@@ -128,6 +131,7 @@ export function buildSnapshot(input: {
       noindexHeader: headerDirectives(p.xRobotsTag).some((d) => d === "noindex" || d === "none"),
       h1: p.h1s[0]?.slice(0, 200) ?? null,
     };
+    if (p.statusCode >= 200 && p.statusCode < 300) state.content = contentSignals(p);
     if (headerDirectives(p.xRobotsTag).some((d) => d === "noai" || d === "noimageai")) state.noaiHeader = true;
     if (p.requestedUrl) state.redirectedTo = pathKey(p.url, url);
     pageStates[key] = state;
@@ -275,6 +279,7 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
   // ── pages present in both crawls ──
   const added: string[] = [];
   const titleChanges: string[] = [];
+  const common: string[] = [];
   for (const [path, b] of Object.entries(next.pages)) {
     const a = prev.pages[path];
     if (!a) {
@@ -292,6 +297,7 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
       continue;
     }
     if (!wasOk || !isOk) continue;
+    common.push(path);
     const aNo = a.noindexMeta || (!crossOrigin && a.noindexHeader);
     const bNo = b.noindexMeta || (!crossOrigin && b.noindexHeader);
     if (!aNo && bNo) {
@@ -319,11 +325,11 @@ export function diffSnapshots(prev: SiteSnapshot, next: SiteSnapshot): SnapshotD
       });
     }
     if ((a.title ?? "") !== (b.title ?? "")) titleChanges.push(path);
-    if ((a.h1 ?? "") && !(b.h1 ?? "")) add({ kind: "h1-removed", level: "warning", path, title: `${path} lost its H1 heading`, before: a.h1 ?? "" });
     if ((a.description ?? "") && !(b.description ?? "")) {
       add({ kind: "description-removed", level: "warning", path, title: `${path} lost its meta description` });
     }
   }
+  for (const c of contentChanges(prev.pages, next.pages, common)) add(c);
   if (titleChanges.length) {
     add({
       kind: "titles-changed",

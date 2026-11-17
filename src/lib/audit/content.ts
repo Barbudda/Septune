@@ -20,7 +20,7 @@ function hash(s: string): number {
 }
 
 /** Set of word-shingle hashes (k consecutive words) for near-dup detection. */
-function shingles(text: string, k = 8): Set<number> {
+export function shingles(text: string, k = 8): Set<number> {
   const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
   const set = new Set<number>();
   if (words.length < k) {

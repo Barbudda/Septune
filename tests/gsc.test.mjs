@@ -119,6 +119,11 @@ const page = (origin, path, extra = {}) => ({
   xRobotsTag: null,
   canonical: `${origin}${path}`,
   h1s: ["h"],
+  headings: [],
+  links: [],
+  jsonLd: [],
+  textContent: "",
+  wordCount: 0,
   html: "",
   ...extra,
 });

@@ -39,6 +39,11 @@ const page = (origin, xRobotsTag = null) => ({
   xRobotsTag,
   canonical: `${origin}/`,
   h1s: ["Home"],
+  headings: [],
+  links: [],
+  jsonLd: [],
+  textContent: "",
+  wordCount: 0,
   html: "",
 });
 const engine = { issues: [], categoryScores: {} };
