@@ -78,7 +78,8 @@ export default function DocsPage() {
             <Link href="/docs/agent" className={LINK}>
               use the Septune agent directly in your editor
             </Link>{" "}
-            via MCP, or read how the checks map to{" "}
+            via MCP, <Link href="/docs/tests" className={LINK}>write SEO tests for your own pages</Link> in
+            septune.yml, or read how the checks map to{" "}
             <Link href="/frameworks/nextjs" className={LINK}>
               technical SEO for Next.js
             </Link>

@@ -236,7 +236,7 @@ test("mcp: stdio server speaks JSON-RPC and runs tools", async () => {
 
   assert.equal(replies.get(1).result.serverInfo.name, "septune");
   const tools = replies.get(2).result.tools.map((t) => t.name);
-  for (const t of ["audit_site", "compare_sites", "audit_page", "geo_audit", "generate_llms_txt", "get_fix_template", "seo_docs", "list_rules"]) {
+  for (const t of ["audit_site", "compare_sites", "audit_page", "geo_audit", "generate_llms_txt", "get_fix_template", "seo_docs", "list_rules", "run_contracts"]) {
     assert.ok(tools.includes(t), `tool ${t}`);
   }
   const geo = JSON.parse(replies.get(3).result.content[0].text);

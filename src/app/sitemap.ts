@@ -38,6 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/pricing", 0.8, "monthly"),
     entry("/docs", 0.7, "weekly"),
     entry("/docs/agent", 0.7, "monthly"),
+    entry("/docs/tests", 0.7, "monthly"),
     ...RULE_PAGES.map((r) => ({
       ...entry(`/docs/issues/${r.id}`, 0.6, "monthly"),
       lastModified: new Date(r.updated),

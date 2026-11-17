@@ -94,6 +94,15 @@ septune watch https://your-site.com --update   # accept the current state as the
 
 `septune audit <url> --save snap.json` writes the same snapshot, and `diff` takes snapshots or live URLs on either side.
 
+**Write SEO tests for your own pages.** `septune init` writes a `septune.yml` with commented examples. Each contract names a URL pattern and what its pages must have; `septune test` runs only those, fast, and exits `1` when one breaks:
+
+```bash
+septune init
+septune test https://preview.your-site.com
+```
+
+The same file sets `fail_on` (critical, high or medium) for `diff` and `test`, and an `ignore:` list (rule ids per URL pattern, each with a required reason) that the report prints as "ignored by septune.yml". Full reference: https://www.septune.dev/docs/tests
+
 **Fix what it finds.** Mechanical issues come with a ready, framework-idiomatic patch:
 
 ```bash
@@ -202,6 +211,7 @@ Settings → Developer → Edit Config (`claude_desktop_config.json`):
 | `get_fix_template` | Idiomatic patch for a mechanical issue (robots, sitemap, viewport, canonical, schema…) |
 | `seo_docs` | Explains an issue from the Septune knowledge base |
 | `list_rules` | The rule catalog, with the same `ruleId`s the audits return |
+| `run_contracts` | The SEO contracts of your `septune.yml` against a site: what failed, expected vs found (local server only) |
 
 ---
 

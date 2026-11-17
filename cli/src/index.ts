@@ -24,6 +24,11 @@ import { buildSnapshot, diffSnapshots, diffFails, diffToMarkdown, type SiteSnaps
 import { fetchVitals, formatVital, type VitalsReport } from "@/lib/audit/vitals";
 import { renderHtmlReport } from "./html-report";
 import { runStdioServer } from "./mcp-stdio";
+import {
+  ConfigParseError, STARTER_CONFIG, applyIgnores, contractsFail, diffFailsOn, evaluateContracts, ignoreInDiff,
+  type IgnoredFinding, type SeptuneConfig,
+} from "@/lib/audit/contracts";
+import { loadConfig } from "@/lib/audit/contracts-file";
 
 /**
  * septune — deterministic technical-SEO audit, from the terminal.
@@ -31,6 +36,8 @@ import { runStdioServer } from "./mcp-stdio";
  *   septune audit <url> [--pages N] [--framework nextjs] [--json] [--fail-under N] [--save snap.json]
  *   septune diff <before> <after>  compare two snapshots or two live URLs (preview vs production)
  *   septune watch <url> --baseline snap.json   regression gate against a saved baseline
+ *   septune init                 write a starter septune.yml (SEO contracts per URL pattern)
+ *   septune test <url>           run only the contracts of septune.yml (fast, for CI)
  *   septune vitals <url>         Core Web Vitals of real users (CrUX, needs CRUX_API_KEY)
  *   septune fix <ruleId> [--framework nextjs] [--url https://…]
  *   septune geo <url>            AI-search (GEO) readiness
@@ -224,18 +231,23 @@ async function cmdAudit(args: Args) {
     }
   }
   // With an export, the findings that put the most clicks at stake come first.
-  const issues = [...engine.issues].sort(
+  let issues = [...engine.issues].sort(
     (a, b) =>
       (traffic.get(b)?.clicks ?? 0) - (traffic.get(a)?.clicks ?? 0) ||
       IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact) ||
       b.affectedUrls.length - a.affectedUrls.length,
   );
 
+  const project = loadProjectConfig(args);
+  const ig = project ? applyIgnores(issues, project.config.ignore) : null;
+  if (ig) issues = ig.kept;
+
   if (json) {
     process.stdout.write(
       JSON.stringify(
         {
           url,
+          ignoredBySeptuneYml: ig?.ignored,
           pagesCrawled: pages.length,
           elapsedSeconds: Number(elapsed),
           overall,
@@ -257,6 +269,7 @@ async function cmdAudit(args: Args) {
     );
   } else {
     printReport({ url, pages: pages.length, elapsed, overall, scores, issues, engine, geo, scan, gsc, traffic });
+    if (project && ig) printIgnored(ig.ignored, project.file);
   }
 
   if (typeof args.flags.html === "string") {
@@ -275,7 +288,7 @@ async function cmdAudit(args: Args) {
 
   // --markdown appends, like diff: the GitHub Action collects both in one file.
   if (typeof args.flags.markdown === "string") {
-    appendFileSync(args.flags.markdown, auditToMarkdown({ url, pages: pages.length, overall, issues, geoScore: geo.score, gsc, traffic }));
+    appendFileSync(args.flags.markdown, auditToMarkdown({ url, pages: pages.length, overall, issues, geoScore: geo.score, gsc, traffic }) + (project && ig ? ignoredMarkdown(ig.ignored, project.file) : ""));
   }
 
   if (typeof args.flags.save === "string") {
@@ -654,6 +667,86 @@ async function cmdLinks(args: Args) {
   process.stdout.write(out.join("\n"));
 }
 
+// ── septune.yml : contrats, exceptions, seuil ─────────────────────────
+/** --config <file>, sinon septune.yml / .septune.yml en remontant depuis le dossier courant. Une erreur de fichier arrête avec ligne et clé. */
+function loadProjectConfig(args: Args): { file: string; config: SeptuneConfig } | null {
+  try {
+    const f = args.flags.config;
+    if (f !== undefined && typeof f !== "string") return fail("--config needs a file path.");
+    return loadConfig({ file: f });
+  } catch (e) {
+    if (e instanceof ConfigParseError) return fail(`invalid config\n${e.message}`);
+    return fail(e instanceof Error ? e.message : String(e));
+  }
+}
+
+function printIgnored(ignored: IgnoredFinding[], file: string) {
+  if (!ignored.length) return;
+  const lines = [c.dim(`ignored by ${file} (${ignored.length})`)];
+  for (const i of ignored.slice(0, 20)) lines.push(c.dim(`  · ${i.ruleId} on ${i.url}  (${i.match}: ${i.reason})`));
+  if (ignored.length > 20) lines.push(c.dim(`  · and ${ignored.length - 20} more`));
+  process.stderr.write(lines.join("\n") + "\n");
+}
+
+const ignoredMarkdown = (ignored: IgnoredFinding[], file: string) =>
+  ignored.length
+    ? `\n<details><summary>Ignored by ${file} (${ignored.length})</summary>\n\n${ignored.map((i) => `- \`${i.ruleId}\` on \`${i.url}\`: ${i.reason}`).join("\n")}\n\n</details>\n`
+    : "";
+
+function cmdInit(args: Args) {
+  const file = typeof args.flags.out === "string" ? args.flags.out : "septune.yml";
+  if (existsSync(file) && args.flags.force !== true) return fail(`${file} already exists. Use --force to overwrite it.`);
+  writeFileSync(file, STARTER_CONFIG);
+  process.stdout.write(`${c.green("✓")} ${file} written. Edit the contracts, then run: septune test <url>\n`);
+}
+
+async function cmdTest(args: Args) {
+  const url = asUrl(args._[1]);
+  const loaded = loadProjectConfig(args);
+  if (!loaded) return fail("No septune.yml found. Create one with: septune init");
+  const { file, config } = loaded;
+  if (!config.contracts.length) return fail(`${file} has no contracts. Add one under "contracts:" (see septune init).`);
+  const json = args.flags.json === true;
+  if (!json) process.stderr.write(`${c.dim(`crawling ${url} (up to ${pagesFlag(args, DEFAULT_PAGES)} pages)…`)}\n`);
+  const scan = await scanSite(url, args, DEFAULT_PAGES);
+  const res = evaluateContracts(config, scan.pages);
+  const { kept, ignored } = applyIgnores(res.issues, config.ignore);
+  const failed = contractsFail(kept, config.failOn);
+  const failing = kept.filter((i) => contractsFail([i], config.failOn));
+
+  if (json) {
+    process.stdout.write(
+      JSON.stringify(
+        { url, config: file, failOn: config.failOn, pagesCrawled: scan.pages.length, pagesChecked: res.checked, assertions: res.assertions, passed: !failed, findings: kept.map((i) => compactIssue(i)), unmatched: res.unmatched, ignored },
+        null,
+        2,
+      ) + "\n",
+    );
+  } else {
+    const out = ["", `${c.bold("Septune contracts")}  ${c.cyan(url)}  ${c.dim(`(${file})`)}`];
+    out.push(c.dim(`${config.contracts.length} contract${config.contracts.length > 1 ? "s" : ""}, ${res.assertions} checks on ${res.checked} page${res.checked === 1 ? "" : "s"}`), "");
+    for (const i of kept) {
+      out.push(`  ${impactPaint[i.impact](i.impact.toUpperCase().padEnd(8))} ${i.title}`);
+      for (const u of i.affectedUrls.slice(0, 5)) out.push(c.dim(`           ${new URL(u.url).pathname}  ${u.note ?? ""}`));
+      if (i.affectedUrls.length > 5) out.push(c.dim(`           and ${i.affectedUrls.length - 5} more`));
+    }
+    if (!kept.length) out.push(`  ${c.green("✓")} every contract holds`);
+    for (const u of res.unmatched) out.push(c.yellow(`  ! ${file}:${u.line} ${u.match} matched no crawled page (raise --pages, or the pattern is wrong)`));
+    out.push("");
+    process.stdout.write(out.join("\n"));
+    printIgnored(ignored, file);
+    if (failed) process.stderr.write(`${c.red("✗")} ${failing.length} contract finding${failing.length > 1 ? "s" : ""} at ${config.failOn} or above (fail_on: ${config.failOn})\n`);
+  }
+  if (typeof args.flags.markdown === "string") {
+    const md = [`## Septune contracts: ${failed ? "failed" : "passed"}`, ""];
+    for (const i of kept) md.push(`- **${i.impact}** ${i.title}: ${i.evidence}`);
+    if (!kept.length) md.push("Every contract holds.");
+    appendFileSync(args.flags.markdown, md.join("\n") + "\n" + ignoredMarkdown(ignored, file));
+  }
+  // exitCode, pas exit() : voir cmdAudit.
+  if (failed) process.exitCode = 1;
+}
+
 // ── diff / watch ─────────────────────────────────────────────────────
 type Gate = "critical" | "new" | "none";
 
@@ -714,14 +807,20 @@ function printDiff(d: SnapshotDiff) {
 }
 
 function emitDiff(raw: SnapshotDiff, args: Args, gate: Gate, gsc: TrafficIndex | null = null) {
-  const d = gsc ? annotateDiff(raw, gsc) : raw;
-  if (args.flags.json === true) process.stdout.write(JSON.stringify(d, null, 2) + "\n");
+  // Sans --fail-on explicite, septune.yml décide (fail_on) ; ses exceptions s'appliquent dans tous les cas.
+  const project = loadProjectConfig(args);
+  const ign = project ? ignoreInDiff(raw, project.config.ignore) : null;
+  const base = ign ? ign.diff : raw;
+  const d = gsc ? annotateDiff(base, gsc) : base;
+  if (args.flags.json === true) process.stdout.write(JSON.stringify(ign?.ignored.length ? { ...d, ignoredBySeptuneYml: ign.ignored } : d, null, 2) + "\n");
   else printDiff(d);
+  if (project && ign) printIgnored(ign.ignored, project.file);
   // --markdown appends (GitHub's $GITHUB_STEP_SUMMARY is an append-only file).
-  if (typeof args.flags.markdown === "string") appendFileSync(args.flags.markdown, diffToMarkdown(d));
-  if (diffFails(d, gate)) {
+  if (typeof args.flags.markdown === "string") appendFileSync(args.flags.markdown, diffToMarkdown(d) + (project && ign ? ignoredMarkdown(ign.ignored, project.file) : ""));
+  const useConfig = project !== null && args.flags["fail-on"] === undefined;
+  if (useConfig ? diffFailsOn(d, project.config.failOn) : diffFails(d, gate)) {
     if (args.flags.json !== true) {
-      process.stderr.write(`${c.red("✗")} regression gate failed (--fail-on ${gate})\n`);
+      process.stderr.write(`${c.red("✗")} regression gate failed (${useConfig ? `fail_on: ${project.config.failOn} in ${project.file}` : `--fail-on ${gate}`})\n`);
     }
     process.exitCode = 1;
   }
@@ -803,6 +902,8 @@ ${c.bold("septune")} ${c.dim(`v${VERSION}`)}: deterministic technical-SEO audit.
 ${c.bold("Commands")}
   audit <url>    full technical-SEO audit + AI-search readiness summary
   diff <a> <b>   what changed between two snapshots or two live URLs (preview vs production)
+  init           write a starter septune.yml (SEO contracts per URL pattern)
+  test <url>     run only the contracts of septune.yml (fast, for CI)
   watch <url>    compare against a saved baseline; exit 1 on regressions  [--baseline file] [--update]
   vitals <url>   Core Web Vitals of real users (Google CrUX; needs CRUX_API_KEY)  [--device mobile|desktop]
   geo <url>      AI-search (GEO) readiness: AI crawler access, llms.txt, citability
@@ -830,7 +931,8 @@ ${c.bold("Flags")}
   --concurrency N  parallel requests (default 4, max 8)
   --ignore-robots  crawl paths robots.txt disallows for SeptuneBot (your own site only)
   --save file      write a snapshot (audit) for diff / watch
-  --fail-on gate   diff & watch: critical (default) | new (any new issue) | none
+  --config file    septune.yml to read (default: septune.yml or .septune.yml, searched upward)
+  --fail-on gate   diff & watch: critical (default) | new (any new issue) | none; overrides fail_on of septune.yml
   --markdown file  audit, diff & watch: append a Markdown summary (e.g. $GITHUB_STEP_SUMMARY)
   --render         audit & geo: also render up to 25 pages in the Chrome or Edge on this machine and compare with the raw HTML (needs playwright-core)
   --gsc file       audit, diff & watch: a Search Console Performance export (Pages tab, CSV or zip); each finding shows the clicks it puts at stake
@@ -867,6 +969,8 @@ async function main() {
     else if (cmd === "links") await cmdLinks(args);
     else if (cmd === "diff") await cmdDiff(args);
     else if (cmd === "watch") await cmdWatch(args);
+    else if (cmd === "init") cmdInit(args);
+    else if (cmd === "test") await cmdTest(args);
     else if (cmd === "vitals") await cmdVitals(args);
     else if (cmd === "mcp") await runStdioServer();
     else fail(`Unknown command "${cmd}". Try: septune --help`);

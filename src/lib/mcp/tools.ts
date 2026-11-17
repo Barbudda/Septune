@@ -4,6 +4,8 @@ import { runDeterministicAudit } from "@/lib/audit/engine";
 import { probeResources } from "@/lib/audit/resource-probe";
 import { generateDeterministicFix } from "@/lib/audit/deterministic-fix";
 import { RULE_CATALOG } from "@/lib/audit/catalog";
+import { ConfigParseError, applyIgnores, contractsFail, evaluateContracts } from "@/lib/audit/contracts";
+import { loadConfig } from "@/lib/audit/contracts-file";
 import { searchCorpus } from "@/lib/support/corpus";
 import { runGeoAudit, buildLlmsTxt } from "@/lib/audit/geo";
 import { config } from "@/lib/config";
@@ -361,6 +363,53 @@ export const MCP_TOOLS: McpTool[] = [
       const url = asUrl(args.url);
       const { pages } = await scanSite(url, { maxPages: pagesArg(args.maxPages, 25), hardCap: pageCap(), deadlineMs: 80_000 });
       return buildLlmsTxt(pages, url);
+    },
+  },
+  {
+    name: "run_contracts",
+    description:
+      "Run the SEO contracts of the project's septune.yml (or .septune.yml) against a site: per URL pattern, assertions on status, indexable, canonical, h1, title, JSON-LD types, min_words and inbound links. Returns passed/failed against the file's fail_on threshold, each failing assertion with the page, the expected value and the value found, and the findings ignored by the file's `ignore:` list with their reasons. Fast; run it after a change to a template. Local server only (it reads septune.yml from the working directory): run `npx septune mcp`.",
+    inputSchema: {
+      type: "object",
+      required: ["url"],
+      properties: {
+        url: { type: "string", description: "Start URL, e.g. http://localhost:3000/ or a preview URL" },
+        maxPages: { type: "number", description: "Pages to crawl (default 25)." },
+        configFile: { type: "string", description: "Path of the config file. Default: septune.yml / .septune.yml searched upward from the working directory." },
+      },
+    },
+    async handler(args) {
+      if (process.env.RANKFORGE_ALLOW_LOCAL !== "1") throw new Error("run_contracts only works with the local server (npx septune mcp): it reads septune.yml from your project.");
+      const url = asUrl(args.url);
+      let loaded;
+      try {
+        loaded = loadConfig({ file: typeof args.configFile === "string" ? args.configFile : undefined });
+      } catch (e) {
+        if (e instanceof ConfigParseError) throw new Error(`Invalid config:
+${e.message}`);
+        throw e;
+      }
+      if (!loaded) throw new Error("No septune.yml found. Create one with `npx septune init`.");
+      const { config, file } = loaded;
+      if (!config.contracts.length) throw new Error(`${file} has no contracts.`);
+      const { pages } = await scanSite(url, { maxPages: pagesArg(args.maxPages, 25), hardCap: pageCap(), deadlineMs: 80_000 });
+      const res = evaluateContracts(config, pages);
+      const { kept, ignored } = applyIgnores(res.issues, config.ignore);
+      return JSON.stringify(
+        {
+          url,
+          config: file,
+          failOn: config.failOn,
+          passed: !contractsFail(kept, config.failOn),
+          pagesChecked: res.checked,
+          assertions: res.assertions,
+          findings: kept.map((i) => ({ ruleId: i.ruleId, impact: i.impact, title: i.title, evidence: i.evidence, pages: i.affectedUrls })),
+          unmatchedContracts: res.unmatched,
+          ignoredBySeptuneYml: ignored,
+        },
+        null,
+        1,
+      );
     },
   },
   {

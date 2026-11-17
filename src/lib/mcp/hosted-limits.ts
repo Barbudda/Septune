@@ -11,6 +11,7 @@ export const CRAWLING_TOOLS: ReadonlySet<string> = new Set([
   "audit_site",
   "audit_page",
   "compare_sites",
+  "run_contracts",
   "geo_audit",
   "generate_llms_txt",
 ]);
