@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RULE_CATALOG } from "@/lib/audit/catalog";
 
 /**
  * The 23-second overview video, on demand. The trigger is plain CSS and the
@@ -118,10 +119,10 @@ export function TourVideo({ className }: { className?: string }) {
               editor, in every pull request and in production. The pull request check
               fails: /pricing became noindex, /docs canonical changed, score 91 to 84. The
               fix goes to your AI editor and /pricing can be indexed again. Three
-              checkpoints (before you push, in the pull request, after the merge), 69
+              checkpoints (before you push, in the pull request, after the merge), {RULE_CATALOG.length}
               checks from indexing to structured data, one site watched for free, a ready
               patch for Next.js, Nuxt, Astro, SvelteKit and Vite + React. Ship fast. Stay
-              indexed. See what Septune finds on your site: no signup, 3 pages free, 69
+              indexed. See what Septune finds on your site: no signup, 3 pages free, {RULE_CATALOG.length}
               checks.
             </p>
           </>
