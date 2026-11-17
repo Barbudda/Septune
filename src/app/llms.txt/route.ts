@@ -31,6 +31,7 @@ export function GET() {
     "",
     `- [Docs](${u("/docs")}): every technical-SEO issue Septune detects and how to fix it.`,
     `- [Agent in your editor](${u("/docs/agent")}): the MCP server and the Claude Code plugin.`,
+    `- [SEO tests](${u("/docs/tests")}): contracts per URL pattern in septune.yml, tested on every deploy.`,
     ...FRAMEWORK_PAGES.map((f) => `- [Technical SEO for ${f.name}](${u(`/frameworks/${f.slug}`)}): ${f.metaApi}, sitemaps, robots.txt and canonicals.`),
     `- [Changelog](${u("/changelog")}): what changed, release by release.`,
     "",
