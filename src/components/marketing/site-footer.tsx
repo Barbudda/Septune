@@ -33,6 +33,7 @@ const COLUMNS = [
       { href: "/hosting", label: "SEO by host" },
       { href: "/search-console", label: "Search Console statuses" },
       { href: "/ai-crawlers", label: "AI crawlers" },
+      { href: "/vs", label: "Compare tools" },
     ],
   },
   {

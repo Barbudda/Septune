@@ -1,6 +1,7 @@
 import { config } from "@/lib/config";
 import { FRAMEWORK_PAGES } from "@/lib/seo/content";
 import { HUBS, topicPath, topicsIn, type TopicHub } from "@/lib/seo/topics";
+import { VS_PAGES, vsPath } from "@/lib/seo/vs";
 import { BILLING_OPEN, PRICING_TIERS } from "@/lib/pricing";
 
 /**
@@ -43,6 +44,11 @@ export function GET() {
         ...topicsIn(h).map((t) => `- [${t.h1}](${u(topicPath(t))}): ${t.description}`),
         "",
       ]),
+    "## Comparisons",
+    "",
+    `- [Compare](${u("/vs")}): Septune next to other SEO tools, with dated sources.`,
+    ...VS_PAGES.map((v) => `- [Septune vs ${v.name}](${u(vsPath(v))}): ${v.teaser}`),
+    "",
     "## Open source",
     "",
     "- [septune on GitHub](https://github.com/Barbudda/rankforge-cli): the CLI, the GitHub Action, the MCP server and the Claude Code plugin, MIT-licensed.",
