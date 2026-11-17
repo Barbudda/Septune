@@ -126,7 +126,12 @@ export default function FreeAuditPage() {
                 </Link>
                 ; unlimited audits (including <span className="font-mono text-sm">localhost</span>) are
                 one command away with the open-source CLI:{" "}
-                <span className="font-mono text-sm text-fg">npx septune audit &lt;url&gt;</span>.
+                <span className="font-mono text-sm text-fg">npx septune audit &lt;url&gt;</span>. Every
+                limit, by place, is in{" "}
+                <Link href="/pricing#limits" className="text-molten-bright underline decoration-molten-bright/40 underline-offset-2 hover:decoration-molten-bright">
+                  one table on the pricing page
+                </Link>
+                .
               </p>
               <p>
                 It audits the technical layer your code controls. It can&apos;t see your backlinks, your

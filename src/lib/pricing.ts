@@ -113,7 +113,7 @@ export const PRICING_TIERS: PricingTier[] = [
  * mid-sentence case: both places that show it put it after a colon.
  */
 export const ROADMAP = [
-  "Google Search Console data (clicks, impressions, index status) next to each issue",
+  "the live Google Search Console connection (the CLI already reads a Search Console export with --gsc)",
   "scheduled white-label reports emailed to your clients",
   "team seats",
 ];
@@ -121,3 +121,19 @@ export const ROADMAP = [
 export const BILLING_NOTE = BILLING_OPEN
   ? "Monthly plans in euros, paid by card through Stripe. Cancel anytime from the billing portal; your plan runs until the end of the month you paid for."
   : "Pro and Studio open soon. Pre-order one and we'll email you the day it does; nothing is charged before you check out. Free works today.";
+
+/**
+ * Page limits by place, for the table on /pricing. Values checked in code on
+ * 2026-11-17: public audit = MAX_PAGES in app/api/public-audit/route.ts,
+ * hosted app crawl = hardCap in lib/agents/crawl.ts (also the hosted MCP
+ * ceiling in lib/mcp/tools.ts), CLI = 25 by default, 500 with --pages,
+ * monitoring = PLAN_LIMITS above.
+ */
+export const LIMIT_TABLE: { where: string; limit: string; note: string }[] = [
+  { where: "Free public audit on septune.dev", limit: "3 pages", note: "No signup. Instant, so the crawl stays short." },
+  { where: "Audits in the app and the hosted MCP server", limit: "24 pages", note: "Per audit. Free account." },
+  { where: "CLI, local MCP server and GitHub Action", limit: "up to 500 pages", note: "25 by default, raised with --pages. Runs on your machine or CI." },
+  { where: "Monitoring, Free", limit: `${PLAN_LIMITS.free.pages} pages per check`, note: `${PLAN_LIMITS.free.sites} site, checked ${PLAN_LIMITS.free.frequency}.` },
+  { where: "Monitoring, Pro", limit: `${PLAN_LIMITS.pro.pages} pages per check`, note: `${PLAN_LIMITS.pro.sites} sites, checked ${PLAN_LIMITS.pro.frequency}.` },
+  { where: "Monitoring, Studio", limit: `${PLAN_LIMITS.studio.pages} pages per check`, note: `${PLAN_LIMITS.studio.sites} sites, checked ${PLAN_LIMITS.studio.frequency}.` },
+];
