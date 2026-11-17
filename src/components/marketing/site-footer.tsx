@@ -101,6 +101,9 @@ export function SiteFooter() {
             <Link href="/terms" className="transition-colors hover:text-fg">
               Terms
             </Link>
+            <Link href="/status" className="transition-colors hover:text-fg">
+              Status
+            </Link>
             {legalNoticeReady && (
               <Link href="/legal" className="transition-colors hover:text-fg">
                 Legal notice

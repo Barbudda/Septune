@@ -7,6 +7,7 @@ import { FinalCta } from "@/components/marketing/final-cta";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqPageSchema, breadcrumbSchema } from "@/lib/seo/schema";
 import { PRICING_FAQS } from "@/lib/seo/content";
+import { LIMIT_TABLE } from "@/lib/pricing";
 
 const TITLE = "Pricing: Free, Pro and Studio plans";
 const DESCRIPTION =
@@ -65,6 +66,35 @@ export default function PricingPage() {
         </Link>
         .
       </p>
+      <section id="limits" className="container-rf scroll-mt-24 pb-12">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight">Where each limit applies</h2>
+          <p className="mt-2 text-sm text-fg-muted">
+            The page limits differ because the places differ: a free audit on this site, an audit in the app,
+            and a crawl that runs on your own machine.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-fg-subtle">
+                <tr>
+                  <th className="py-2 pr-4 font-medium">Where</th>
+                  <th className="py-2 pr-4 font-medium">Limit</th>
+                  <th className="py-2 font-medium">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {LIMIT_TABLE.map((r) => (
+                  <tr key={r.where} className="border-t border-border align-top">
+                    <th scope="row" className="py-2 pr-4 font-medium text-fg">{r.where}</th>
+                    <td className="py-2 pr-4 tabular-nums text-fg">{r.limit}</td>
+                    <td className="py-2 text-fg-muted">{r.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
       <ComparisonSection />
       <FaqSection items={PRICING_FAQS} title="Pricing questions" />
       <FinalCta />

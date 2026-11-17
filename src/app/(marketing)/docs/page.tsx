@@ -70,7 +70,11 @@ export default function DocsPage() {
             , then add the pull-request check and monitoring. Issues are scored by impact, effort and risk; each one
             lists the affected URLs and the files most likely behind it. For {FIXABLE_RULE_IDS.length} of the checks
             Septune also writes the patch, and the page shows it for each framework. Septune never writes to your
-            repository. You can also{" "}
+            repository. Page limits by place are in{" "}
+            <Link href="/pricing#limits" className={LINK}>
+              the table on the pricing page
+            </Link>
+            . You can also{" "}
             <Link href="/docs/agent" className={LINK}>
               use the Septune agent directly in your editor
             </Link>{" "}

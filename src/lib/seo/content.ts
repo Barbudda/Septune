@@ -5,6 +5,7 @@
  */
 import type { Framework } from "@/types";
 import { RULE_CATALOG } from "@/lib/audit/catalog";
+import { FIXABLE_RULE_IDS } from "@/lib/audit/deterministic-fix";
 import { BILLING_OPEN } from "@/lib/pricing";
 import type { GuideSection } from "./guides";
 
@@ -232,6 +233,20 @@ export type ChangelogEntry = { date: string; title: string; notes: string[] };
 
 /** Newest first. Dates also drive sitemap lastModified for content routes. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: "2026-11-17",
+    title: "Preview against production for AI crawlers, rendered parity, and clicks per finding",
+    notes: [
+      // Les comptes viennent du catalogue et du registre de patchs : les entrées plus
+      // anciennes gardent les chiffres de leur jour (67 contrôles, 9 patchs), c'est l'historique.
+      `Today: ${RULE_CATALOG.length} checks, ${FIXABLE_RULE_IDS.length} of them with a ready patch for Next.js, Nuxt, Astro and SvelteKit.`,
+      "Pull requests: the diff between preview and production now lists the AI crawlers the preview blocks and production lets in.",
+      "CLI: --render compares the raw HTML with the page after a browser renders it (word count, links, JSON-LD), to show what a crawler without JavaScript misses.",
+      "CLI: --gsc reads a Search Console export and puts the clicks each finding puts at stake next to it.",
+      "Search Console: the API client and the sign-in flow are written. The live connection is coming; until then, use the export.",
+      "Site: the limits of each plan and tool are in one table on /pricing, the privacy policy separates local audits, hosted audits and optional AI explanations, and there is a status page.",
+    ],
+  },
   {
     date: "2026-10-31",
     title: "Two new checks, and guides for the errors developers search",
