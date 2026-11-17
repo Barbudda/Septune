@@ -22,9 +22,19 @@ inputs:
     required: false
     default: "0"
 
+  contracts:
+    description: "Run the SEO contracts of septune.yml (septune test). auto = only when septune.yml or .septune.yml exists; true | false force it."
+    required: false
+    default: "auto"
+
 runs:
   using: "composite"
   steps:
+    - name: Run SEO contracts (septune.yml)
+      if: ${{ inputs.contracts == 'true' || (inputs.contracts == 'auto' && hashFiles('septune.yml', '.septune.yml') != '') }}
+      shell: bash
+      run: |
+        npx --yes rankforge-cli test "${{ inputs.url }}"           --pages "${{ inputs.pages }}"           --markdown "$GITHUB_STEP_SUMMARY"           --no-color
     - name: Audit with RankForge
       shell: bash
       run: |
